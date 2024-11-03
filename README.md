@@ -33,7 +33,7 @@ That's why I created MIMP - a minimalistic music player specifically designed fo
 
 ### Requirements
 
-- macOS 12.0+
+- macOS 14.6+
 - Swift 5.5+
 - Apple Silicon Mac (Intel Mac compatible)
 
