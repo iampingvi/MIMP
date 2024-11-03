@@ -1,5 +1,7 @@
 # MIMP (Minimal Interface Music Player)
 
+![Screenshot](Images/Screenshot.png)
+
 ## The Story Behind MIMP
 
 As a DJ, I frequently download large music packs from various DJ pools like Hypeddit and others. One common challenge is the need to efficiently preview numerous tracks to find the right ones for your sets. This process can be time-consuming, especially when you need to quickly identify drops and breakdowns in tracks.
