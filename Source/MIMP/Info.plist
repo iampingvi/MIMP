@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>LSUIElement</key>
+    <true/>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Need to control media playback</string>
+    <key>NSAppleScriptEnabled</key>
+    <true/>
+    <key>NSSystemAdministrationUsageDescription</key>
+    <string>Need to handle media keys</string>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>mp3</string>
+            </array>
+            <key>CFBundleTypeMIMETypes</key>
+            <array>
+                <string>audio/mpeg</string>
+            </array>
+            <key>CFBundleTypeName</key>
+            <string>MP3 Audio</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>LSIsAppleDefaultForType</key>
+            <true/>
+        </dict>
+        <dict>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>wav</string>
+                <string>wave</string>
+            </array>
+            <key>CFBundleTypeMIMETypes</key>
+            <array>
+                <string>audio/wav</string>
+                <string>audio/wave</string>
+            </array>
+            <key>CFBundleTypeName</key>
+            <string>WAV Audio</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>LSIsAppleDefaultForType</key>
+            <true/>
+        </dict>
+        <dict>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>aiff</string>
+                <string>aif</string>
+            </array>
+            <key>CFBundleTypeMIMETypes</key>
+            <array>
+                <string>audio/aiff</string>
+                <string>audio/x-aiff</string>
+            </array>
+            <key>CFBundleTypeName</key>
+            <string>AIFF Audio</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>LSIsAppleDefaultForType</key>
+            <true/>
+        </dict>
+        <dict>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>m4a</string>
+            </array>
+            <key>CFBundleTypeMIMETypes</key>
+            <array>
+                <string>audio/mp4</string>
+                <string>audio/x-m4a</string>
+            </array>
+            <key>CFBundleTypeName</key>
+            <string>M4A Audio</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>LSIsAppleDefaultForType</key>
+            <true/>
+        </dict>
+        <dict>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>flac</string>
+            </array>
+            <key>CFBundleTypeMIMETypes</key>
+            <array>
+                <string>audio/flac</string>
+                <string>audio/x-flac</string>
+            </array>
+            <key>CFBundleTypeName</key>
+            <string>FLAC Audio</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>LSIsAppleDefaultForType</key>
+            <true/>
+        </dict>
+    </array>
+    <key>CFBundleTypeRole</key>
+    <string>Editor</string>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.music</string>
+</dict>
+</plist> 
