@@ -1,3 +1,5 @@
+![Swift](https://img.shields.io/badge/swift-F54A2A?style=for-the-badge&logo=swift&logoColor=white)![macOS](https://img.shields.io/badge/mac%20os-000000?style=for-the-badge&logo=macos&logoColor=F0F0F0) ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/iampingvi/MIMP/total?style=for-the-badge) 
+
 # MIMP (Minimal Interface Music Player)
 
 ![Screenshot](Images/Screenshot.png)
@@ -42,10 +44,12 @@ That's why I created MIMP - a minimalistic music player specifically designed fo
 - Code comments generated using AI Mistral
 - Custom application icon designed by myself :P
 
+### P.S.
 I'll be glad if knowledgeable people help with updating the app. Implementing an accurate BPM indicator, key detection, and other features useful for DJs.
 
 Let's make the world a little simpler together :)
 
+<a href="https://www.buymeacoffee.com/pingvi"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=☕&slug=pingvi&button_colour=BD5FFF&font_colour=ffffff&font_family=Poppins&outline_colour=000000&coffee_colour=FFDD00" /></a>
 
 
 
