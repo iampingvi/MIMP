@@ -21,6 +21,12 @@ That's why I created MIMP - a minimalistic music player specifically designed fo
 - **Minimalistic Interface**: Focus on what matters - the music
 - **Native Performance**: Built specifically for Apple Silicon Macs (compatible with Intel Macs)
 
+## Controls 
+
+- Double-click on title: Expands the application to full width
+- Play/Pause: Use Space bar or the media control button (F8)
+
+
 ## Technical Details
 
 ### Requirements
