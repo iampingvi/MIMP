@@ -351,7 +351,7 @@ struct AboutView: View {
                         }
                         .buttonStyle(.plain)
 
-                        Link(destination: URL(string: "https://iampingvi.github.io/PIMP")!) {
+                        Link(destination: URL(string: "https://iampingvi.github.io/MIMP")!) {
                             HStack(spacing: 8) {
                                 Image(systemName: "globe")
                                     .frame(width: 16)

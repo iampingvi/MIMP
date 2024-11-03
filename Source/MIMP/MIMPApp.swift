@@ -1,5 +1,4 @@
 import SwiftUI
-import AppKit
 
 @main
 struct MIMPApp: App {
@@ -118,25 +117,6 @@ extension NSWindow {
                 height: currentFrame.height
             )
             self.setFrame(newFrame, display: true, animate: true)
-        }
-    }
-}
-
-class AppDelegate: NSObject, NSApplicationDelegate {
-    @MainActor
-    func application(_ application: NSApplication, open urls: [URL]) {
-        guard let url = urls.first,
-              AudioFormat.allExtensions.contains(url.pathExtension.lowercased()) else {
-            return
-        }
-
-        // Activate the existing window
-        if let window = NSApp.windows.first {
-            window.makeKeyAndOrderFront(nil)
-        }
-
-        Task {
-            try? await AudioPlayer.shared.load(url: url)
         }
     }
 }
