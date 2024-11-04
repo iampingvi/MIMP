@@ -142,6 +142,7 @@ struct PlayerInterface: View {
     @ObservedObject var player: AudioPlayer
     let track: Track
     @State private var showPlayIcon: Bool = false
+    @State private var showRemainingTime: Bool = Settings.shared.showRemainingTime
 
     var body: some View {
         HStack(spacing: 15) {
@@ -175,9 +176,16 @@ struct PlayerInterface: View {
             VStack(alignment: .leading, spacing: 8) {
                 // Waveform
                 HStack(spacing: 8) {
-                    Text(formatTime(player.currentTime))
-                        .font(.system(size: 10, weight: .medium, design: .monospaced))
-                        .foregroundColor(.secondary)
+                    Button(action: {
+                        showRemainingTime.toggle()
+                        Settings.shared.showRemainingTime = showRemainingTime
+                    }) {
+                        Text(formatTime(showRemainingTime ? track.duration - player.currentTime : player.currentTime))
+                            .font(.system(size: 10, weight: .medium, design: .monospaced))
+                            .foregroundColor(.secondary)
+                            .frame(width: 45, alignment: .trailing)
+                    }
+                    .buttonStyle(.plain)
 
                     WaveformView(
                         url: track.fileURL,
@@ -193,6 +201,8 @@ struct PlayerInterface: View {
                     Text(formatTime(track.duration))
                         .font(.system(size: 10, weight: .medium, design: .monospaced))
                         .foregroundColor(.secondary)
+                        .frame(width: 45, alignment: .leading)
+                        .padding(.trailing, -20)
                 }
             }
         }
@@ -203,7 +213,9 @@ struct PlayerInterface: View {
     private func formatTime(_ time: TimeInterval) -> String {
         let minutes = Int(time) / 60
         let seconds = Int(time) % 60
-        return String(format: "%d:%02d", minutes, seconds)
+        return showRemainingTime && time != track.duration ? 
+            String(format: "-%d:%02d", minutes, seconds) :
+            String(format: "%d:%02d", minutes, seconds)
     }
 }
 

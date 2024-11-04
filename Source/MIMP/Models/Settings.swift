@@ -7,6 +7,7 @@ class Settings {
     private let volumeKey = "player.volume"
     private let lastVolumeKey = "player.lastVolume"
     private let isMutedKey = "player.isMuted"
+    private let showRemainingTimeKey = "player.showRemainingTime"
     
     var volume: Float {
         get { Float(defaults.double(forKey: volumeKey)) }
@@ -23,6 +24,11 @@ class Settings {
         set { defaults.set(newValue, forKey: isMutedKey) }
     }
     
+    var showRemainingTime: Bool {
+        get { defaults.bool(forKey: showRemainingTimeKey) }
+        set { defaults.set(newValue, forKey: showRemainingTimeKey) }
+    }
+    
     private init() {
         if defaults.object(forKey: volumeKey) == nil {
             defaults.set(1.0, forKey: volumeKey)
@@ -32,6 +38,9 @@ class Settings {
         }
         if defaults.object(forKey: isMutedKey) == nil {
             defaults.set(false, forKey: isMutedKey)
+        }
+        if defaults.object(forKey: showRemainingTimeKey) == nil {
+            defaults.set(false, forKey: showRemainingTimeKey)
         }
     }
 } 
