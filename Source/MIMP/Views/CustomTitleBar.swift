@@ -14,12 +14,7 @@ struct CustomTitleBar: View {
                     .onTapGesture {
                         NSApplication.shared.terminate(nil)
                     }
-                
-                WindowButton(color: .yellow, symbol: "minus")
-                    .help("Minimize")
-                    .onTapGesture {
-                        NSApp.mainWindow?.miniaturize(nil)
-                    }
+         
                 
                 WindowButton(color: .gray, symbol: "info.circle")
                     .help("About")
