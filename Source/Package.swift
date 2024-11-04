@@ -5,7 +5,7 @@ import PackageDescription
 let package = Package(
     name: "MIMP",
     platforms: [
-        .macOS(.v12)
+        .macOS(.v13)
     ],
     products: [
         .executable(

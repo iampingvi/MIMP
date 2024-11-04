@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CustomTitleBar: View {
     @ObservedObject var player: AudioPlayer
+    @ObservedObject private var updateManager = UpdateManager.shared
     @Binding var showingAbout: Bool
     let height: CGFloat = 28
     @StateObject private var themeManager = ThemeManager.shared
@@ -10,26 +11,40 @@ struct CustomTitleBar: View {
         HStack(spacing: 0) {
             // Левая часть с кнопками
             HStack(spacing: 8) {
+                // Кнопка закрытия
                 WindowButton(
                     color: themeManager.isRetroMode ? .green : .red,
                     symbol: "xmark",
                     isRetroStyle: themeManager.isRetroMode
                 )
-                    .help("Close")
-                    .onTapGesture {
-                        NSApplication.shared.terminate(nil)
-                    }
-         
+                .help("Close")
+                .onTapGesture {
+                    NSApplication.shared.terminate(nil)
+                }
                 
+                // Кнопка About
                 WindowButton(
                     color: .gray, 
                     symbol: "info.circle",
                     isRetroStyle: themeManager.isRetroMode
                 )
-                    .help("About")
+                .help("About")
+                .onTapGesture {
+                    showingAbout.toggle()
+                }
+                
+                // Кнопка обновления
+                if updateManager.isUpdateAvailable {
+                    WindowButton(
+                        color: .blue,
+                        symbol: "arrow.triangle.2.circlepath",
+                        isRetroStyle: themeManager.isRetroMode
+                    )
+                    .help("Update Available")
                     .onTapGesture {
-                        showingAbout.toggle()
+                        updateManager.showingUpdate = true
                     }
+                }
             }
             .padding(.leading, 12)
             
@@ -60,7 +75,7 @@ struct CustomTitleBar: View {
             
             // Правая часть с регулятором громкости
             VolumeControl(player: player)
-                .padding(.trailing, 0)
+                .padding(.trailing, 8)
         }
         .frame(height: height)
     }
@@ -72,7 +87,7 @@ struct CustomTitleBar: View {
             }
             return track.title
         }
-        return "MIMP | Minimal Interface Music Player"
+        return "Minimal Interface Music Player"
     }
 }
 

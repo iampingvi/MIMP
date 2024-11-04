@@ -19,6 +19,7 @@ struct ContentView: View {
     @State private var isSeekingForward = false
     @State private var isSeekingBackward = false
     @State private var showingFirstLaunch = Settings.shared.isFirstLaunch
+    @StateObject private var updateManager = UpdateManager.shared
 
     var body: some View {
         ZStack {
@@ -96,6 +97,13 @@ struct ContentView: View {
                     .transition(AnyTransition.move(edge: .top))
                     .zIndex(1)
             }
+
+            if updateManager.showingUpdate {
+                UpdateView()
+                    .background(VisualEffectView(material: .hudWindow, blendingMode: .behindWindow))
+                    .transition(.move(edge: .top))
+                    .zIndex(2)
+            }
         }
         .background(
             VisualEffectView(
@@ -107,6 +115,7 @@ struct ContentView: View {
         .animation(.easeInOut(duration: 0.2), value: player.currentTrack != nil)
         .animation(.easeInOut(duration: 0.2), value: isDragging)
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showingFirstLaunch)
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: updateManager.showingUpdate)
         .onDrop(of: [.audio], isTargeted: $isDragging) { providers in
             let providers = Array(providers)
             Task { @MainActor in
@@ -427,15 +436,15 @@ struct AboutView: View {
     @StateObject private var themeManager = ThemeManager.shared
 
     private var appVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
     }
 
     private var appBuild: String {
-        Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
     }
 
     private var appName: String {
-        Bundle.main.infoDictionary?["CFBundleName"] as? String ?? "MIMP"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "MIMP"
     }
 
     var body: some View {
@@ -828,6 +837,10 @@ private struct FirstLaunchView: View {
         var successCount = 0
         var failedFormats: [String] = []
         
+        print("\n=== MIMP Default Player Setup ===")
+        print("App Bundle ID: \(Bundle.main.bundleIdentifier ?? "Unknown")")
+        print("App URL: \(Bundle.main.bundleURL.path)")
+        
         // Регистрируем приложение для всех аудио файлов
         if let audioType = UTType("public.audio") {
             do {
@@ -835,8 +848,9 @@ private struct FirstLaunchView: View {
                     at: Bundle.main.bundleURL,
                     toOpen: audioType
                 )
+                print("✓ Registered for public.audio")
             } catch {
-                print("Failed to register for public.audio: \(error)")
+                print("✗ Failed to register for public.audio: \(error)")
             }
         }
         
@@ -862,25 +876,46 @@ private struct FirstLaunchView: View {
         for format in AudioFormat.allCases {
             if let type = UTType(filenameExtension: format.rawValue) {
                 do {
+                    print("\nTrying to set default for .\(format.rawValue)")
+                    
+                    // Получаем текущий обработчик
+                    let currentHandler = LSCopyDefaultRoleHandlerForContentType(
+                        type.identifier as CFString,
+                        LSRolesMask.viewer
+                    )?.takeRetainedValue() as String?
+                    print("Current handler: \(currentHandler ?? "None")")
+                    
+                    var isSuccess = false
+                    
                     // Для проблемных форматов используем принудительную установку
                     if format.rawValue == "aiff" || format.rawValue == "m4a" {
+                        print("Forcing default app for .\(format.rawValue)")
+                        
                         // Регистрируем приложение
                         LSRegisterURL(Bundle.main.bundleURL as CFURL, true)
                         
-                        // Устанавливаем для всех возможных типов
+                        // Устанавливаем для всех возможных типов с повышенными привилегиями
                         if let types = forceTypes[format.rawValue] {
                             for typeId in types {
-                                LSSetDefaultRoleHandlerForContentType(
+                                // Пробуем установить через Launch Services
+                                let status = LSSetDefaultRoleHandlerForContentType(
                                     typeId as CFString,
                                     LSRolesMask.all,
                                     Bundle.main.bundleIdentifier! as CFString
                                 )
+                                print("  Forced \(typeId): \(status == noErr ? "✓" : "✗")")
                                 
-                                if let forceType = UTType(typeId) {
+                                // Если не получилось, пробуем через NSWorkspace
+                                if status != noErr, let forceType = UTType(typeId) {
                                     try? workspace.setDefaultApplication(
                                         at: Bundle.main.bundleURL,
                                         toOpen: forceType
                                     )
+                                    print("  Tried NSWorkspace for \(typeId)")
+                                }
+                                
+                                if status == noErr {
+                                    isSuccess = true
                                 }
                             }
                         }
@@ -897,16 +932,31 @@ private struct FirstLaunchView: View {
                         type.identifier as CFString,
                         LSRolesMask.viewer
                     )?.takeRetainedValue() as String?,
-                       newHandler == Bundle.main.bundleIdentifier {
+                       newHandler == Bundle.main.bundleIdentifier || isSuccess {
                         successCount += 1
+                        print("✓ Successfully set as default")
+                        print("  New handler: \(newHandler)")
                     } else {
                         failedFormats.append(format.rawValue)
+                        print("✗ Handler not set")
+                        print("  Current handler: \(currentHandler ?? "None")")
                     }
                 } catch {
                     failedFormats.append(format.rawValue)
+                    print("✗ Error: \(error.localizedDescription)")
                 }
             }
+
         }
+        
+        // Итоговый отчет
+        print("\n=== Summary ===")
+        print("Total formats: \(AudioFormat.allCases.count)")
+        print("Successfully set: \(successCount)")
+        if !failedFormats.isEmpty {
+            print("Failed formats: \(failedFormats.joined(separator: ", "))")
+        }
+        print("===============================\n")
         
         // Показываем успех, если хотя бы один формат установлен
         if successCount > 0 {
