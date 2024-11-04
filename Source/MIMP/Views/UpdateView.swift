@@ -1,20 +1,52 @@
 import SwiftUI
 
+private struct ChangelogSection: Identifiable {
+    let id = UUID()
+    let title: String
+    let items: [String]
+}
+
 struct UpdateView: View {
     @ObservedObject private var updateManager = UpdateManager.shared
     @StateObject private var themeManager = ThemeManager.shared
     
-    private var formattedChangelog: String {
-        guard let changelog = updateManager.changelog else { return "" }
+    private func parseChangelog() -> [ChangelogSection] {
+        guard let changelog = updateManager.changelog else { return [] }
         
-        // Ищем последний ###
-        if let range = changelog.range(of: "###", options: .backwards) {
-            // Берем все после ###
-            let changes = changelog[range.upperBound...].trimmingCharacters(in: .whitespacesAndNewlines)
-            return changes
+        // Ищем строку с Release
+        if let releaseRange = changelog.range(of: "Release") {
+            // Берем все после Release
+            let changes = changelog[releaseRange.upperBound...].trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            var sections: [ChangelogSection] = []
+            var currentTitle = ""
+            var currentItems: [String] = []
+            
+            // Разбираем по строкам
+            changes.components(separatedBy: .newlines).forEach { line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix("###") {
+                    // Сохраняем предыдущую секцию
+                    if !currentTitle.isEmpty && !currentItems.isEmpty {
+                        sections.append(ChangelogSection(title: currentTitle, items: currentItems))
+                    }
+                    // Начинаем новую секцию
+                    currentTitle = trimmed.replacingOccurrences(of: "### ", with: "")
+                    currentItems = []
+                } else if trimmed.hasPrefix("-") {
+                    let item = trimmed.replacingOccurrences(of: "- ", with: "")
+                    currentItems.append(item)
+                }
+            }
+            
+            // Добавляем последнюю секцию
+            if !currentTitle.isEmpty && !currentItems.isEmpty {
+                sections.append(ChangelogSection(title: currentTitle, items: currentItems))
+            }
+            
+            return sections
         }
-        
-        return changelog
+        return []
     }
     
     var body: some View {
@@ -33,29 +65,40 @@ struct UpdateView: View {
             }
             .frame(height: 28)
             
-  
-            
             // Main content
             HStack(spacing: 15) {
-                // Version info и Changelog
-                VStack(alignment: .leading, spacing: 6) {
-                    ScrollView(.vertical, showsIndicators: true) {
-                        Text(formattedChangelog)
-                            .font(.system(
-                                size: 11,
-                                design: themeManager.isRetroMode ? .monospaced : .default
-                            ))
-                            .foregroundColor(Color.retroText.opacity(0.7))
-                            .multilineTextAlignment(.leading)
-                            .lineLimit(nil)
-                            .fixedSize(horizontal: false, vertical: true)
+                // Changelog content
+                let sections = parseChangelog()
+                
+                HStack(alignment: .top, spacing: 20) {
+                    ForEach(sections) { section in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(section.title)
+                                .font(.system(
+                                    size: 12,
+                                    weight: .bold,
+                                    design: themeManager.isRetroMode ? .monospaced : .default
+                                ))
+                                .foregroundColor(Color.retroText)
+                            
+                            ForEach(section.items, id: \.self) { item in
+                                Text("• " + item)
+                                    .font(.system(
+                                        size: 11,
+                                        design: themeManager.isRetroMode ? .monospaced : .default
+                                    ))
+                                    .foregroundColor(Color.retroText.opacity(0.7))
+                                    .lineLimit(1)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .frame(maxHeight: 60)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 15)
+                .transition(.move(edge: .top).combined(with: .opacity))
                 
-                // Buttons (всегда справа)
+                // Buttons
                 VStack(alignment: .trailing, spacing: 6) {
                     if updateManager.downloadProgress > 0 {
                         ProgressView(value: updateManager.downloadProgress)
@@ -64,7 +107,9 @@ struct UpdateView: View {
                     } else {
                         HStack(spacing: 8) {
                             Button(action: {
-                                updateManager.showingUpdate = false
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    updateManager.showingUpdate = false
+                                }
                             }) {
                                 Text("Skip")
                                     .font(.system(
@@ -115,5 +160,6 @@ struct UpdateView: View {
                 blendingMode: .behindWindow
             )
         )
+        .transition(.move(edge: .top))
     }
 } 
