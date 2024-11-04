@@ -1,0 +1,27 @@
+{
+  "object" : {
+    "artifacts" : [
+
+    ],
+    "dependencies" : [
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "siren",
+          "kind" : "remoteSourceControl",
+          "location" : "https://github.com/ArtSabintsev/Siren.git",
+          "name" : "Siren"
+        },
+        "state" : {
+          "checkoutState" : {
+            "revision" : "6139af3394bc3635c6c8d5255339796feaa7d1a0",
+            "version" : "6.1.3"
+          },
+          "name" : "sourceControlCheckout"
+        },
+        "subpath" : "Siren"
+      }
+    ]
+  },
+  "version" : 6
+}
