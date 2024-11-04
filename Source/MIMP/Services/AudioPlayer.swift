@@ -42,11 +42,57 @@ final class AudioPlayer: ObservableObject {
 
         setupAudioSession()
         setupRemoteCommandCenter()
+        
+        // Store the cancellable in a local variable first
+        let terminationCancellable = NotificationCenter.default
+            .publisher(for: NSApplication.willTerminateNotification)
+            .sink { _ in
+                Task { @MainActor in
+                    // Create local copies of properties that need cleanup
+                    let monitor = self.keyMonitor
+                    let engine = self.audioEngine
+                    let currentPlayer = self.player
+                    let currentAnalysisTask = self.analysisTask
+                    let currentTimer = self.timer
+                    
+                    // Cancel tasks
+                    currentAnalysisTask?.cancel()
+                    currentTimer?.invalidate()
+                    
+                    // Stop audio
+                    engine?.stop()
+                    currentPlayer?.stop()
+                    
+                    // Remove monitor
+                    if let monitor = monitor {
+                        NSEvent.removeMonitor(monitor)
+                    }
+                }
+            }
+        
+        // Then store it in the set
+        cancellables.insert(terminationCancellable)
     }
 
     deinit {
-        Task { @MainActor in
-            cleanupResources()
+        // Create local copies of properties that need cleanup
+        let monitor = keyMonitor
+        let engine = audioEngine
+        let currentPlayer = player
+        let currentAnalysisTask = analysisTask
+        let currentTimer = timer
+        
+        // Cancel tasks
+        currentAnalysisTask?.cancel()
+        currentTimer?.invalidate()
+        
+        // Stop audio
+        engine?.stop()
+        currentPlayer?.stop()
+        
+        // Remove monitor
+        if let monitor = monitor {
+            NSEvent.removeMonitor(monitor)
         }
     }
 
@@ -54,9 +100,13 @@ final class AudioPlayer: ObservableObject {
         guard !cleanupFlag else { return }
         cleanupFlag = true
 
+        // Cancel any async tasks
         analysisTask?.cancel()
         analysisTask = nil
         stopTimer()
+
+        // Remove notification observer
+        cancellables.removeAll()
 
         if let monitor = keyMonitor {
             NSEvent.removeMonitor(monitor)
@@ -68,8 +118,6 @@ final class AudioPlayer: ObservableObject {
 
         player?.stop()
         player = nil
-
-        cancellables.removeAll()
 
         currentTime = 0
         isPlaying = false
@@ -189,7 +237,7 @@ final class AudioPlayer: ObservableObject {
         player.prepareToPlay()
 
         // Then update the UI
-        await cleanupResources()
+        cleanupResources() // No need for await since it's synchronous now
         cleanupFlag = false
 
         self.player = player
@@ -216,21 +264,20 @@ final class AudioPlayer: ObservableObject {
     }
 
     private func loadMetadata(from asset: AVURLAsset) async throws -> AudioMetadata {
-        let commonMetadata = try await asset.load(.commonMetadata)
+        let commonMetadata = try await asset.loadMetadata()
         var title: String?
         var artist: String?
         var tags: [String] = []
 
         for item in commonMetadata {
-            let key = try await item.commonKey
-            if let key = key {
+            if let key = item.commonKey {
                 switch key {
                 case .commonKeyTitle:
-                    title = try await item.load(.stringValue)
+                    title = await item.stringValue
                 case .commonKeyArtist:
-                    artist = try await item.load(.stringValue)
+                    artist = await item.stringValue
                 default:
-                    if let value = try await item.load(.stringValue) {
+                    if let value = await item.stringValue {
                         tags.append(value)
                     }
                 }
@@ -241,18 +288,15 @@ final class AudioPlayer: ObservableObject {
     }
 
     private func loadArtwork(from asset: AVURLAsset) async throws -> URL? {
-        let metadata = try await asset.load(.commonMetadata)
+        let metadata = try await asset.loadMetadata()
         
         for item in metadata {
-            let key = try await item.commonKey
-            if key == .commonKeyArtwork {
-                let data = try await item.load(.dataValue)
-                if let data = data {
-                    let tempURL = FileManager.default.temporaryDirectory
-                        .appendingPathComponent(UUID().uuidString + ".jpg")
-                    try data.write(to: tempURL)
-                    return tempURL
-                }
+            if item.commonKey == .commonKeyArtwork,
+               let data = await item.dataValue {
+                let tempURL = FileManager.default.temporaryDirectory
+                    .appendingPathComponent(UUID().uuidString + ".jpg")
+                try data.write(to: tempURL)
+                return tempURL
             }
         }
         
@@ -359,7 +403,7 @@ final class AudioPlayer: ObservableObject {
     }
 }
 
-struct AudioMetadata {
+struct AudioMetadata: Sendable {
     let title: String?
     let artist: String?
     let artwork: URL?
@@ -369,4 +413,26 @@ struct AudioMetadata {
 enum AudioPlayerError: Error {
     case unsupportedFormat
     case failedToLoad(Error)
+}
+
+// Helper extension for AVURLAsset
+extension AVURLAsset {
+    func loadMetadata() async throws -> [AVMetadataItem] {
+        try await self.load(.commonMetadata)
+    }
+}
+
+// Helper extension for AVMetadataItem
+extension AVMetadataItem {
+    var stringValue: String? {
+        get async {
+            try? await self.load(.stringValue)
+        }
+    }
+    
+    var dataValue: Data? {
+        get async {
+            try? await self.load(.dataValue)
+        }
+    }
 }

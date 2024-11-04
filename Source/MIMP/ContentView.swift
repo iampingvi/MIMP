@@ -118,22 +118,35 @@ struct ContentView: View {
     }
 
     private func handleDrop(_ providers: [NSItemProvider]) async {
-        @Sendable func loadItem(_ provider: NSItemProvider) async throws -> URL? {
-            if provider.hasItemConformingToTypeIdentifier(UTType.audio.identifier) {
-                if let item = try await provider.loadItem(forTypeIdentifier: UTType.audio.identifier) as? URL {
-                    return item
-                }
-            }
-            return nil
+        // Create a sendable copy of providers
+        let providersCopy = providers.map { provider -> (id: UUID, provider: NSItemProvider) in
+            (UUID(), provider)
         }
         
-        for provider in providers {
-            if let url = try? await loadItem(provider),
+        for (_, provider) in providersCopy {
+            if let url = try? await loadItemURL(from: provider),
                AudioFormat.allExtensions.contains(url.pathExtension.lowercased()) {
                 try? await player.load(url: url)
                 break
             }
         }
+    }
+
+    private func loadItemURL(from provider: NSItemProvider) async throws -> URL? {
+        if provider.hasItemConformingToTypeIdentifier(UTType.audio.identifier) {
+            return try await withCheckedThrowingContinuation { continuation in
+                provider.loadItem(forTypeIdentifier: UTType.audio.identifier) { item, error in
+                    if let error = error {
+                        continuation.resume(throwing: error)
+                    } else if let url = item as? URL {
+                        continuation.resume(returning: url)
+                    } else {
+                        continuation.resume(returning: nil)
+                    }
+                }
+            }
+        }
+        return nil
     }
 }
 
@@ -319,32 +332,33 @@ struct AboutView: View {
                     }
                 }) {
                     Image(systemName: "chevron.up")
-                        .font(.system(size: 30))
+                        .font(.system(size: 24))
                         .foregroundColor(.white)
                         .frame(width: 50)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .padding(.leading, 20)
 
                 // Centered columns
-                HStack(spacing: 60) {
+                HStack(spacing: 40) {
                     // Left column - information
-                    VStack(alignment: .center, spacing: 12) {
+                    VStack(alignment: .center, spacing: 10) {
                         HStack(spacing: 12) {
                             if let appIcon = NSImage(named: "AppIcon") {
                                 Image(nsImage: appIcon)
                                     .resizable()
-                                    .frame(width: 32, height: 32)
-                                    .cornerRadius(8)
+                                    .frame(width: 40, height: 40)
+                                    .cornerRadius(10)
+                                    .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
                             }
 
-                            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                            VStack(alignment: .leading, spacing: 2) {
                                 Text(appName)
                                     .font(.system(size: 20, weight: .bold))
                                 Text("v\(appVersion)")
                                     .font(.system(size: 11))
                                     .foregroundColor(.secondary)
-                                    .baselineOffset(8)
                             }
                         }
 
@@ -355,46 +369,48 @@ struct AboutView: View {
                         Text("© 2024")
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
+                            .padding(.top, 2)
                     }
 
                     // Right column - links
-                    VStack(alignment: .leading, spacing: 8) {
-                        Link(destination: URL(string: "https://github.com/iampingvi/MIMP")!) {
-                            HStack(spacing: 8) {
-                                Image("github-mark")
-                                    .resizable()
-                                    .frame(width: 16, height: 16)
-                                Text("GitHub")
-                                    .underline()
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach([
+                            ("github-mark", "GitHub", "https://github.com/iampingvi/MIMP"),
+                            ("cup.and.saucer.fill", "Buy me a coffee", "https://www.buymeacoffee.com/pingvi"),
+                            ("globe", "Official Website", "https://iampingvi.github.io/PIMP")
+                        ], id: \.1) { icon, text, urlString in
+                            Link(destination: URL(string: urlString)!) {
+                                HStack(spacing: 8) {
+                                    if icon == "github-mark" {
+                                        Image(icon)
+                                            .resizable()
+                                            .frame(width: 16, height: 16)
+                                    } else {
+                                        Image(systemName: icon)
+                                            .frame(width: 16)
+                                    }
+                                    Text(text)
+                                        .underline()
+                                }
+                                .contentShape(Rectangle())
+                                .padding(.vertical, 2)
+                            }
+                            .buttonStyle(.plain)
+                            .opacity(0.9)
+                            .hover { hovering in
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    if let button = NSApp.keyWindow?.contentView?.hitTest(NSEvent.mouseLocation)?.enclosingScrollView {
+                                        button.alphaValue = hovering ? 1 : 0.9
+                                    }
+                                }
                             }
                         }
-                        .buttonStyle(.plain)
-
-                        Link(destination: URL(string: "https://www.buymeacoffee.com/pingvi")!) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "cup.and.saucer.fill")
-                                    .frame(width: 16)
-                                Text("Buy me a coffee")
-                                    .underline()
-                            }
-                        }
-                        .buttonStyle(.plain)
-
-                        Link(destination: URL(string: "https://iampingvi.github.io/PIMP")!) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "globe")
-                                    .frame(width: 16)
-                                Text("Official Website")
-                                    .underline()
-                            }
-                        }
-                        .buttonStyle(.plain)
                     }
                     .font(.system(size: 12))
-                    .foregroundColor(.white.opacity(0.9))
+                    .foregroundColor(.white)
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.trailing, 70) // Compensate for the back button offset
+                .padding(.trailing, 70)
 
                 Spacer()
             }
@@ -404,12 +420,21 @@ struct AboutView: View {
 
             // Footer text
             Text("Made with ♥︎ by PINGVI")
-                .font(.system(size: 11))
+                .font(.system(size: 11, weight: .medium))
                 .foregroundColor(.secondary)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.bottom, 8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+// Add hover effect modifier
+extension View {
+    func hover(_ handler: @escaping (Bool) -> Void) -> some View {
+        self.onHover { hovering in
+            handler(hovering)
+        }
     }
 }
 
