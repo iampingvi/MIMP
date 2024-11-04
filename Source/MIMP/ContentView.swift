@@ -13,6 +13,7 @@ struct ContentView: View {
     @State private var showingAbout = false
     @Environment(\.scenePhase) private var scenePhase
     @FocusState private var isFocused: Bool
+    @StateObject private var themeManager = ThemeManager.shared
 
     var body: some View {
         ZStack {
@@ -81,8 +82,10 @@ struct ContentView: View {
             }
         }
         .background(
-            VisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
-                .ignoresSafeArea()
+            VisualEffectView(
+                material: themeManager.isRetroMode ? .windowBackground : .hudWindow,
+                blendingMode: .behindWindow
+            )
         )
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showingAbout)
         .animation(.easeInOut(duration: 0.2), value: player.currentTrack != nil)
@@ -156,6 +159,7 @@ struct PlayerInterface: View {
     let track: Track
     @State private var showPlayIcon: Bool = false
     @State private var showRemainingTime: Bool = Settings.shared.showRemainingTime
+    @StateObject private var themeManager = ThemeManager.shared
 
     var body: some View {
         HStack(spacing: 15) {
@@ -165,14 +169,25 @@ struct PlayerInterface: View {
                     player.togglePlayPause()
                 }
             }) {
-                Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 30))
-                    .foregroundColor(.white)
-                    .frame(width: 50)
-                    .scaleEffect(showPlayIcon ? 0.8 : 1.0)
-                    .animation(.spring(response: 0.2), value: player.isPlaying)
+                if themeManager.isRetroMode {
+                    ZStack {
+                        Rectangle()
+                            .stroke(Color.retroText, lineWidth: 1)
+                            .frame(width: 30, height: 30)
+                        Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(Color.retroText)
+                    }
+                } else {
+                    Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                        .font(.system(size: 30))
+                        .foregroundColor(.white)
+                        .frame(width: 50)
+                }
             }
             .buttonStyle(.plain)
+            .scaleEffect(showPlayIcon ? 0.8 : 1.0)
+            .animation(.spring(response: 0.2), value: player.isPlaying)
             .padding(.leading, 20)
             .onChange(of: player.isPlaying) { isPlaying in
                 withAnimation(.spring(response: 0.2)) {
@@ -194,8 +209,12 @@ struct PlayerInterface: View {
                         Settings.shared.showRemainingTime = showRemainingTime
                     }) {
                         Text(formatTime(showRemainingTime ? track.duration - player.currentTime : player.currentTime))
-                            .font(.system(size: 10, weight: .medium, design: .monospaced))
-                            .foregroundColor(.secondary)
+                            .font(.system(
+                                size: 10, 
+                                weight: .medium, 
+                                design: themeManager.isRetroMode ? .monospaced : .monospaced
+                            ))
+                            .foregroundColor(Color.retroText.opacity(0.7))
                             .frame(width: 45, alignment: .trailing)
                     }
                     .buttonStyle(.plain)
@@ -212,8 +231,12 @@ struct PlayerInterface: View {
                     .frame(height: 30)
 
                     Text(formatTime(track.duration))
-                        .font(.system(size: 10, weight: .medium, design: .monospaced))
-                        .foregroundColor(.secondary)
+                        .font(.system(
+                            size: 10, 
+                            weight: .medium, 
+                            design: themeManager.isRetroMode ? .monospaced : .monospaced
+                        ))
+                        .foregroundColor(Color.retroText.opacity(0.7))
                         .frame(width: 45, alignment: .leading)
                         .padding(.trailing, -20)
                 }
@@ -267,19 +290,36 @@ struct CoverArtView: View {
 
 struct DropZoneView: View {
     @Binding var isDragging: Bool
+    @StateObject private var themeManager = ThemeManager.shared
 
     var body: some View {
         HStack(spacing: 20) {
-            Image(systemName: "arrow.down.circle")
-                .font(.system(size: 30))
-                .foregroundColor(.secondary)
+            if themeManager.isRetroMode {
+                Text("[]")
+                    .font(.system(size: 30, design: .monospaced))
+                    .foregroundColor(Color.retroText.opacity(0.7))
+            } else {
+                Image(systemName: "arrow.down.circle")
+                    .font(.system(size: 30))
+                    .foregroundColor(Color.retroText.opacity(0.7))
+            }
 
             VStack(alignment: .leading, spacing: 5) {
                 Text("Drop audio file to open")
-                    .font(.headline)
-                Text("Supported formats: \(AudioFormat.formatsDescription)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.system(
+                        size: 13,
+                        weight: .medium,
+                        design: themeManager.isRetroMode ? .monospaced : .default
+                    ))
+                    .foregroundColor(Color.retroText)
+                Text(themeManager.isRetroMode ? 
+                    "Supported formats: [\(AudioFormat.formatsDescription)]" :
+                    "Supported formats: (\(AudioFormat.formatsDescription))")
+                    .font(.system(
+                        size: 11,
+                        design: themeManager.isRetroMode ? .monospaced : .default
+                    ))
+                    .foregroundColor(Color.retroText.opacity(0.7))
             }
         }
         .padding(40)
@@ -308,6 +348,7 @@ struct VisualEffectView: NSViewRepresentable {
 
 struct AboutView: View {
     @Binding var showingAbout: Bool
+    @StateObject private var themeManager = ThemeManager.shared
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
@@ -331,69 +372,105 @@ struct AboutView: View {
                         showingAbout = false
                     }
                 }) {
-                    Image(systemName: "chevron.up")
-                        .font(.system(size: 24))
-                        .foregroundColor(.white)
-                        .frame(width: 50)
-                        .contentShape(Rectangle())
+                    Group {
+                        if themeManager.isRetroMode {
+                            ZStack {
+                                Rectangle()
+                                    .stroke(Color.retroText, lineWidth: 1)
+                                    .frame(width: 24, height: 24)
+                                Image(systemName: "chevron.up")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(Color.retroText)
+                            }
+                        } else {
+                            Image(systemName: "chevron.up")
+                                .font(.system(size: 24))
+                                .foregroundColor(.white)
+                        }
+                    }
+                    .frame(width: 50)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .padding(.leading, 20)
 
-                // Centered columns
-                HStack(spacing: 40) {
-                    // Left column - information
-                    VStack(alignment: .center, spacing: 10) {
-                        HStack(spacing: 12) {
-                            if let appIcon = NSImage(named: "AppIcon") {
-                                Image(nsImage: appIcon)
-                                    .resizable()
-                                    .frame(width: 40, height: 40)
-                                    .cornerRadius(10)
-                                    .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
-                            }
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(appName)
-                                    .font(.system(size: 20, weight: .bold))
-                                Text("v\(appVersion)")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.secondary)
-                            }
+                // Content columns
+                HStack(spacing: 30) {
+                    // Column 1 - App Info
+                    VStack(alignment: .center, spacing: 8) {
+                        if let appIcon = NSImage(named: "AppIcon") {
+                            Image(nsImage: appIcon)
+                                .resizable()
+                                .frame(width: 64, height: 64)
+                                .cornerRadius(themeManager.isRetroMode ? 0 : 15)
+                                .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
+                                .onTapGesture {
+                                    themeManager.handleLogoClick()
+                                }
                         }
-
-                        Text("Minimal Interface Music Player")
-                            .font(.system(size: 13))
-                            .foregroundColor(.secondary)
-
-                        Text("© 2024")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                            .padding(.top, 2)
                     }
+                    .frame(width: 120)
 
-                    // Right column - links
-                    VStack(alignment: .leading, spacing: 10) {
+                    // Column 2 - Description
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                            Text(appName)
+                                .font(.system(
+                                    size: 14,
+                                    weight: .medium,
+                                    design: themeManager.isRetroMode ? .monospaced : .default
+                                ))
+                                .foregroundColor(Color.retroText)
+                            Text(themeManager.isRetroMode ? "[\(appVersion)]" : "(\(appVersion))")
+                                .font(.system(
+                                    size: 9,
+                                    design: themeManager.isRetroMode ? .monospaced : .default
+                                ))
+                                .foregroundColor(Color.retroText.opacity(0.7))
+                                .offset(y: -2)
+                        }
+                        .padding(.bottom, 2)
+                        
+                        Text("Minimal Interface\nMusic Player")
+                            .font(.system(
+                                size: 11,
+                                design: themeManager.isRetroMode ? .monospaced : .default
+                            ))
+                            .foregroundColor(Color.retroText.opacity(0.7))
+                            .multilineTextAlignment(.leading)
+                    }
+                    .frame(width: 140, alignment: .leading)
+
+                    // Column 3 - Links
+                    VStack(alignment: .leading, spacing: 8) {
                         ForEach([
                             ("github-mark", "GitHub", "https://github.com/iampingvi/MIMP"),
-                            ("cup.and.saucer.fill", "Buy me a coffee", "https://www.buymeacoffee.com/pingvi"),
-                            ("globe", "Official Website", "https://iampingvi.github.io/PIMP")
+                            ("cup.and.saucer.fill", "Support", "https://www.buymeacoffee.com/pingvi"),
+                            ("globe", "Website", "https://iampingvi.github.io/PIMP")
                         ], id: \.1) { icon, text, urlString in
                             Link(destination: URL(string: urlString)!) {
-                                HStack(spacing: 8) {
+                                HStack(spacing: 6) {
                                     if icon == "github-mark" {
                                         Image(icon)
                                             .resizable()
-                                            .frame(width: 16, height: 16)
+                                            .frame(width: 14, height: 14)
+                                            .if(themeManager.isRetroMode) { view in
+                                                view.colorMultiply(Color.retroText)
+                                            }
                                     } else {
                                         Image(systemName: icon)
-                                            .frame(width: 16)
+                                            .frame(width: 14)
+                                            .font(.system(size: 12))
                                     }
                                     Text(text)
+                                        .font(.system(
+                                            size: 12,
+                                            design: themeManager.isRetroMode ? .monospaced : .default
+                                        ))
                                         .underline()
                                 }
+                                .foregroundColor(Color.retroText)
                                 .contentShape(Rectangle())
-                                .padding(.vertical, 2)
                             }
                             .buttonStyle(.plain)
                             .opacity(0.9)
@@ -408,24 +485,41 @@ struct AboutView: View {
                     }
                     .font(.system(size: 12))
                     .foregroundColor(.white)
+                    .frame(width: 120)
+
+                    // Column 4 - Credits
+                    VStack(alignment: .trailing, spacing: 6) {
+                        Text("Made with ♥︎ by PINGVI")
+                            .font(.system(
+                                size: 11,
+                                design: themeManager.isRetroMode ? .monospaced : .default
+                            ))
+                            .foregroundColor(Color.retroText.opacity(0.7))
+                            .fixedSize(horizontal: true, vertical: false)
+                        Text("© 2024")
+                            .font(.system(
+                                size: 11,
+                                design: themeManager.isRetroMode ? .monospaced : .default
+                            ))
+                            .foregroundColor(Color.retroText.opacity(0.7))
+                            .padding(.top, 2)
+                    }
+                    .frame(width: 160)
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.trailing, 70)
-
-                Spacer()
+                .padding(.trailing, 20)
             }
             .frame(height: 100)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-
-            // Footer text
-            Text("Made with ♥︎ by PINGVI")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundColor(.secondary)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.bottom, 8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            VisualEffectView(
+                material: themeManager.isRetroMode ? .windowBackground : .hudWindow,
+                blendingMode: .behindWindow
+            )
+        )
     }
 }
 
@@ -479,6 +573,18 @@ class NonDraggableNSView: NSView {
     // Перехватываем событие мыши, чтобы предотвратить его распространение
     override func mouseDown(with event: NSEvent) {
         // Не передаем событие дальше
+    }
+}
+
+// Добавим вспомогательное расширение для условного применения модификаторов
+extension View {
+    @ViewBuilder
+    func `if`<Transform: View>(_ condition: Bool, transform: (Self) -> Transform) -> some View {
+        if condition {
+            transform(self)
+        } else {
+            self
+        }
     }
 }
 

@@ -3,6 +3,7 @@ import SwiftUI
 struct VolumeControl: View {
     @ObservedObject var player: AudioPlayer
     @State private var isHovered = false
+    @StateObject private var themeManager = ThemeManager.shared
     
     var volumeIcon: String {
         if player.isMuted || player.volume == 0 {
@@ -30,8 +31,8 @@ struct VolumeControl: View {
                 }
                 .frame(width: 20)
                 .foregroundColor(player.isMuted || player.volume == 0 ? 
-                    Color.white.opacity(0.3) : 
-                    .white.opacity(0.5))
+                    Color.retroText.opacity(0.3) : 
+                    Color.retroText.opacity(0.5))
             }
             .buttonStyle(.plain)
             .help("Mute")
@@ -46,7 +47,7 @@ struct VolumeControl: View {
             )
             .frame(width: 50)
             .controlSize(.mini)
-            .tint(.white)
+            .tint(Color.retroAccent)
             .help("Volume")
         }
         .padding(.horizontal, 6)

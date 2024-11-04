@@ -113,5 +113,7 @@
     <string>Editor</string>
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.music</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
 </dict>
 </plist> 

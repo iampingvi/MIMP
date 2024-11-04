@@ -4,19 +4,28 @@ struct CustomTitleBar: View {
     @ObservedObject var player: AudioPlayer
     @Binding var showingAbout: Bool
     let height: CGFloat = 28
+    @StateObject private var themeManager = ThemeManager.shared
     
     var body: some View {
         HStack(spacing: 0) {
             // Левая часть с кнопками
             HStack(spacing: 8) {
-                WindowButton(color: .red, symbol: "xmark")
+                WindowButton(
+                    color: themeManager.isRetroMode ? .green : .red,
+                    symbol: "xmark",
+                    isRetroStyle: themeManager.isRetroMode
+                )
                     .help("Close")
                     .onTapGesture {
                         NSApplication.shared.terminate(nil)
                     }
          
                 
-                WindowButton(color: .gray, symbol: "info.circle")
+                WindowButton(
+                    color: .gray, 
+                    symbol: "info.circle",
+                    isRetroStyle: themeManager.isRetroMode
+                )
                     .help("About")
                     .onTapGesture {
                         showingAbout.toggle()
@@ -26,8 +35,11 @@ struct CustomTitleBar: View {
             
             // Центральная часть с названием
             Text(titleText)
-                .font(.system(size: 13))
-                .foregroundColor(.secondary)
+                .font(.system(
+                    size: 13,
+                    design: themeManager.isRetroMode ? .monospaced : .default
+                ))
+                .foregroundColor(Color.retroText)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 16)
@@ -65,20 +77,28 @@ struct CustomTitleBar: View {
 }
 
 struct WindowButton: View {
+    @StateObject private var themeManager = ThemeManager.shared
     let color: Color
     let symbol: String
     @State private var isHovered = false
+    let isRetroStyle: Bool
     
     var body: some View {
         ZStack {
-            Circle()
-                .fill(color.opacity(isHovered ? 1.0 : 0.8))
-                .frame(width: 12, height: 12)
+            if isRetroStyle {
+                Rectangle()
+                    .stroke(Color.retroText, lineWidth: 1)
+                    .frame(width: 12, height: 12)
+            } else {
+                Circle()
+                    .fill(color.opacity(isHovered ? 1.0 : 0.8))
+                    .frame(width: 12, height: 12)
+            }
             
-            if isHovered {
+            if isHovered || isRetroStyle {
                 Image(systemName: symbol)
                     .font(.system(size: 8, weight: .bold))
-                    .foregroundColor(Color.black.opacity(0.8))
+                    .foregroundColor(isRetroStyle ? Color.retroText : Color.black.opacity(0.8))
             }
         }
         .onHover { hover in

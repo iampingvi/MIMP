@@ -11,6 +11,8 @@ struct WaveformView: View {
     @State private var hoveredX: CGFloat?
     @State private var error: Error?
     
+    @StateObject private var themeManager = ThemeManager.shared
+    
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
@@ -35,15 +37,19 @@ struct WaveformView: View {
                             path.addLine(to: CGPoint(x: x, y: bottomY))
                             
                             let color = x <= progressWidth ? 
-                                Color.accentColor.opacity(0.6 + Double(sample) * 0.4) :
-                                Color.white.opacity(0.3 + Double(sample) * 0.4)
+                                (themeManager.isRetroMode ? 
+                                    Color.green.opacity(0.6 + Double(sample) * 0.4) :
+                                    Color.accentColor.opacity(0.6 + Double(sample) * 0.4)) :
+                                (themeManager.isRetroMode ? 
+                                    Color.green.opacity(0.3 + Double(sample) * 0.4) :
+                                    Color.white.opacity(0.3 + Double(sample) * 0.4))
                             context.stroke(path, with: .color(color), lineWidth: 2)
                         }
                     }
                     
                     // Progress indicator
                     Rectangle()
-                        .fill(Color.accentColor.opacity(0.5))
+                        .fill(Color.retroAccent.opacity(0.5))
                         .frame(width: 2)
                         .position(x: geometry.size.width * CGFloat(currentTime / duration), y: geometry.size.height / 2)
                     
