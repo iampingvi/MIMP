@@ -48,27 +48,10 @@ final class AudioPlayer: ObservableObject {
         // Store the cancellable in a local variable first
         let terminationCancellable = NotificationCenter.default
             .publisher(for: NSApplication.willTerminateNotification)
-            .sink { _ in
-                Task { @MainActor in
-                    // Create local copies of properties that need cleanup
-                    let monitor = self.keyMonitor
-                    let engine = self.audioEngine
-                    let currentPlayer = self.player
-                    let currentAnalysisTask = self.analysisTask
-                    let currentTimer = self.timer
-                    
-                    // Cancel tasks
-                    currentAnalysisTask?.cancel()
-                    currentTimer?.invalidate()
-                    
-                    // Stop audio
-                    engine?.stop()
-                    currentPlayer?.stop()
-                    
-                    // Remove monitor
-                    if let monitor = monitor {
-                        NSEvent.removeMonitor(monitor)
-                    }
+            .sink { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    guard let self = self else { return }
+                    self.cleanupResources()
                 }
             }
         
@@ -80,7 +63,6 @@ final class AudioPlayer: ObservableObject {
         // Create local copies of properties that need cleanup
         let monitor = keyMonitor
         let engine = audioEngine
-        let currentPlayer = player
         let currentAnalysisTask = analysisTask
         let currentTimer = timer
         
@@ -90,7 +72,7 @@ final class AudioPlayer: ObservableObject {
         
         // Stop audio
         engine?.stop()
-        currentPlayer?.stop()
+        player?.stop()
         
         // Remove monitor
         if let monitor = monitor {

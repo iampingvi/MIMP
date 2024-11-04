@@ -9,8 +9,8 @@ struct AudioInfoView: View {
             ForEach([
                 (audioInfo.format, "music.note.list"),
                 ("\(audioInfo.bitRate) kbps", "gauge.with.needle"),
-                (audioInfo.sampleRateDescription, "waveform"),
-                (audioInfo.channelsDescription, "speaker.wave.2")
+                ("\(audioInfo.sampleRate) Hz", "waveform"),
+                ("\(audioInfo.channels)ch", "speaker.wave.2")
             ], id: \.0) { text, icon in
                 HStack(spacing: 6) {
                     Image(systemName: icon)

@@ -662,7 +662,7 @@ class NonDraggableNSView: NSView {
         return false
     }
     
-    // Перехватываем событие мыши, чтобы предотвратить его распространение
+    // Перехватываем событие мыши, чтобы предотратить его распространение
     override func mouseDown(with event: NSEvent) {
         // Не передаем событие дальше
     }
@@ -848,20 +848,16 @@ private struct FirstLaunchView: View {
         print("App Bundle ID: \(Bundle.main.bundleIdentifier ?? "Unknown")")
         print("App URL: \(Bundle.main.bundleURL.path)")
         
-        // Регистрируем приложение для всех аудио файлов
+        // Register for all audio files
         if let audioType = UTType("public.audio") {
-            do {
-                try workspace.setDefaultApplication(
-                    at: Bundle.main.bundleURL,
-                    toOpen: audioType
-                )
-                print("✓ Registered for public.audio")
-            } catch let error {
-                print("✗ Failed to register for public.audio: \(error)")
-            }
+            workspace.setDefaultApplication(
+                at: Bundle.main.bundleURL,
+                toOpen: audioType
+            )
+            print("✓ Registered for public.audio")
         }
         
-        // Принудительная установка для проблемных форматов
+        // Force settings for problematic formats
         let forceTypes = [
             "aiff": [
                 "public.aiff-audio",
@@ -879,92 +875,69 @@ private struct FirstLaunchView: View {
             ]
         ]
         
-        // Пробуем установить для каждого формата
+        // Try to set for each format
         for format in AudioFormat.allCases {
             if let type = UTType(filenameExtension: format.rawValue) {
-                do {
-                    print("\nTrying to set default for .\(format.rawValue)")
+                print("\nTrying to set default for .\(format.rawValue)")
+                
+                let currentHandler = LSCopyDefaultRoleHandlerForContentType(
+                    type.identifier as CFString,
+                    LSRolesMask.viewer
+                )?.takeRetainedValue() as String?
+                print("Current handler: \(currentHandler ?? "None")")
+                
+                var isSuccess = false
+                
+                if format.rawValue == "aiff" || format.rawValue == "m4a" {
+                    print("Forcing default app for .\(format.rawValue)")
+                    LSRegisterURL(Bundle.main.bundleURL as CFURL, true)
                     
-                    // Получаем текущий обработчик
-                    let currentHandler = LSCopyDefaultRoleHandlerForContentType(
-                        type.identifier as CFString,
-                        LSRolesMask.viewer
-                    )?.takeRetainedValue() as String?
-                    print("Current handler: \(currentHandler ?? "None")")
-                    
-                    var isSuccess = false
-                    
-                    // Для проблемных форматов используем принудительную установку
-                    if format.rawValue == "aiff" || format.rawValue == "m4a" {
-                        print("Forcing default app for .\(format.rawValue)")
-                        
-                        // Регистрируем приложение
-                        LSRegisterURL(Bundle.main.bundleURL as CFURL, true)
-                        
-                        // Устанавливаем для всех возможных типов с повышенными привилегиями
-                        if let types = forceTypes[format.rawValue] {
-                            for typeId in types {
-                                // Пробуем установить через Launch Services
-                                let status = LSSetDefaultRoleHandlerForContentType(
-                                    typeId as CFString,
-                                    LSRolesMask.all,
-                                    Bundle.main.bundleIdentifier! as CFString
+                    if let types = forceTypes[format.rawValue] {
+                        for typeId in types {
+                            let status = LSSetDefaultRoleHandlerForContentType(
+                                typeId as CFString,
+                                LSRolesMask.all,
+                                Bundle.main.bundleIdentifier! as CFString
+                            )
+                            print("  Forced \(typeId): \(status == noErr ? "✓" : "✗")")
+                            
+                            if status != noErr, let forceType = UTType(typeId) {
+                                workspace.setDefaultApplication(
+                                    at: Bundle.main.bundleURL,
+                                    toOpen: forceType
                                 )
-                                print("  Forced \(typeId): \(status == noErr ? "✓" : "✗")")
-                                
-                                // Если не получилось, пробуем через NSWorkspace
-                                if status != noErr, let forceType = UTType(typeId) {
-                                    do {
-                                        try workspace.setDefaultApplication(
-                                            at: Bundle.main.bundleURL,
-                                            toOpen: forceType
-                                        )
-                                        print("  Tried NSWorkspace for \(typeId)")
-                                    } catch let error {
-                                        print("  NSWorkspace failed: \(error)")
-                                    }
-                                }
-                                
-                                if status == noErr {
-                                    isSuccess = true
-                                }
+                                print("  Tried NSWorkspace for \(typeId)")
+                            }
+                            
+                            if status == noErr {
+                                isSuccess = true
                             }
                         }
-                    } else {
-                        // Для остальных форматов используем стандартный подход
-                        do {
-                            try workspace.setDefaultApplication(
-                                at: Bundle.main.bundleURL,
-                                toOpen: type
-                            )
-                        } catch let error {
-                            print("Standard approach failed: \(error)")
-                            continue
-                        }
                     }
-                    
-                    // Проверяем результат
-                    if let newHandler = LSCopyDefaultRoleHandlerForContentType(
-                        type.identifier as CFString,
-                        LSRolesMask.viewer
-                    )?.takeRetainedValue() as String?,
-                       newHandler == Bundle.main.bundleIdentifier || isSuccess {
-                        successCount += 1
-                        print("✓ Successfully set as default")
-                        print("  New handler: \(newHandler)")
-                    } else {
-                        failedFormats.append(format.rawValue)
-                        print("✗ Handler not set")
-                        print("  Current handler: \(currentHandler ?? "None")")
-                    }
-                } catch let error {
+                } else {
+                    workspace.setDefaultApplication(
+                        at: Bundle.main.bundleURL,
+                        toOpen: type
+                    )
+                    isSuccess = true
+                }
+                
+                if let newHandler = LSCopyDefaultRoleHandlerForContentType(
+                    type.identifier as CFString,
+                    LSRolesMask.viewer
+                )?.takeRetainedValue() as String?,
+                   newHandler == Bundle.main.bundleIdentifier || isSuccess {
+                    successCount += 1
+                    print("✓ Successfully set as default")
+                    print("  New handler: \(newHandler)")
+                } else {
                     failedFormats.append(format.rawValue)
-                    print("✗ Error: \(error.localizedDescription)")
+                    print("✗ Handler not set")
+                    print("  Current handler: \(currentHandler ?? "None")")
                 }
             }
         }
         
-        // Итоговый отчет
         print("\n=== Summary ===")
         print("Total formats: \(AudioFormat.allCases.count)")
         print("Successfully set: \(successCount)")
@@ -973,7 +946,6 @@ private struct FirstLaunchView: View {
         }
         print("===============================\n")
         
-        // Показываем успех, если хотя бы один формат установлен
         if successCount > 0 {
             isSuccess = true
         }
