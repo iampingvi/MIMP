@@ -28,6 +28,8 @@ final class AudioPlayer: ObservableObject {
     @Published private(set) var isMuted: Bool = false
     private var lastVolume: Float = 1.0
 
+    @Published private(set) var audioInfo: AudioInfo?
+
     private var timer: Timer?
     private var analysisTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
@@ -232,19 +234,19 @@ final class AudioPlayer: ObservableObject {
         let asset = AVURLAsset(url: url)
         let metadata = try await loadMetadata(from: asset)
         let artwork = try await loadArtwork(from: asset)
-        let player = try AVAudioPlayer(contentsOf: url)
-        player.volume = volume
-        player.prepareToPlay()
+        let audioPlayer = try AVAudioPlayer(contentsOf: url)
+        audioPlayer.volume = volume
+        audioPlayer.prepareToPlay()
 
         // Then update the UI
-        cleanupResources() // No need for await since it's synchronous now
+        cleanupResources()
         cleanupFlag = false
 
-        self.player = player
+        self.player = audioPlayer
         self.currentTrack = Track(
             title: metadata.title ?? url.deletingPathExtension().lastPathComponent,
             artist: metadata.artist ?? "Unknown Artist",
-            duration: player.duration,
+            duration: audioPlayer.duration,
             bpm: 0,
             key: "-",
             artwork: artwork,
@@ -261,6 +263,60 @@ final class AudioPlayer: ObservableObject {
 
         // Update Now Playing
         updateNowPlaying()
+
+        // Get audio format info
+        let format = url.pathExtension.uppercased()
+        
+        // Get bitrate using AVAsset
+        let bitRate: Int
+        if let track = try? await asset.load(.tracks).first {
+            let estimatedDataRate = try? await track.load(.estimatedDataRate)
+            if let dataRate = estimatedDataRate, dataRate > 0 {
+                // Округляем до ближайшего стандартного битрейта
+                let standardBitrates: [Int]
+                switch format.lowercased() {
+                case "flac", "wav":
+                    standardBitrates = [320, 470, 940, 1411, 2116, 2823, 3529, 4233]  // Добавляем битрейты для FLAC/WAV
+                default:
+                    standardBitrates = [32, 64, 96, 128, 160, 192, 224, 256, 320]  // Стандартные битрейты для MP3/AAC
+                }
+                let normalizedBitRate = Int(round(dataRate / 1000))
+                bitRate = standardBitrates.min(by: { abs($0 - normalizedBitRate) < abs($1 - normalizedBitRate) }) ?? normalizedBitRate
+            } else {
+                // Fallback to approximate calculation
+                let fileSize = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.intValue ?? 0
+                let duration = audioPlayer.duration
+                
+                // Вычитаем размер обложки, если она есть
+                var adjustedFileSize = fileSize
+                if let artworkData = try? await loadArtworkData(from: asset) {
+                    adjustedFileSize -= artworkData.count
+                }
+                
+                // Вычисляем и округляем до ближайшего стандартного битрейта
+                let calculatedBitRate = duration > 0 ? Int(Double(adjustedFileSize * 8) / duration / 1000) : 0
+                let standardBitrates: [Int]
+                switch format.lowercased() {
+                case "flac", "wav":
+                    standardBitrates = [320, 470, 940, 1411, 2116, 2823, 3529, 4233]
+                default:
+                    standardBitrates = [32, 64, 96, 128, 160, 192, 224, 256, 320]
+                }
+                bitRate = standardBitrates.min(by: { abs($0 - calculatedBitRate) < abs($1 - calculatedBitRate) }) ?? calculatedBitRate
+            }
+        } else {
+            bitRate = 0
+        }
+        
+        let sampleRate = Int(audioPlayer.format.sampleRate)
+        let channels = audioPlayer.format.channelCount
+
+        self.audioInfo = AudioInfo(
+            format: format,
+            bitRate: bitRate,
+            sampleRate: sampleRate,
+            channels: Int(channels)
+        )
     }
 
     private func loadMetadata(from asset: AVURLAsset) async throws -> AudioMetadata {
@@ -414,6 +470,19 @@ final class AudioPlayer: ObservableObject {
     func adjustVolume(by delta: Float) {
         let newVolume = max(0, min(1, volume + delta))
         setVolume(newVolume)
+    }
+
+    // Добавим новый вспомогательный метод для получения данных обложки
+    private func loadArtworkData(from asset: AVURLAsset) async throws -> Data? {
+        let metadata = try await asset.loadMetadata()
+        
+        for item in metadata {
+            if item.commonKey == .commonKeyArtwork {
+                return await item.dataValue
+            }
+        }
+        
+        return nil
     }
 }
 

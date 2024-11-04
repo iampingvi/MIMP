@@ -247,88 +247,95 @@ struct PlayerInterface: View {
     @StateObject private var themeManager = ThemeManager.shared
 
     var body: some View {
-        HStack(spacing: 15) {
-            // Play/Pause button
-            Button(action: {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    player.togglePlayPause()
-                }
-            }) {
-                if themeManager.isRetroMode {
-                    ZStack {
-                        Rectangle()
-                            .stroke(Color.retroText, lineWidth: 1)
-                            .frame(width: 30, height: 30)
+        VStack(spacing: 15) {
+            // Добавить после TrackInfoView и перед элементами управления
+            if let audioInfo = player.audioInfo {
+                AudioInfoView(audioInfo: audioInfo)
+            }
+            
+            HStack(spacing: 15) {
+                // Play/Pause button
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        player.togglePlayPause()
+                    }
+                }) {
+                    if themeManager.isRetroMode {
+                        ZStack {
+                            Rectangle()
+                                .stroke(Color.retroText, lineWidth: 1)
+                                .frame(width: 30, height: 30)
+                            Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(Color.retroText)
+                        }
+                    } else {
                         Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(Color.retroText)
+                            .font(.system(size: 30))
+                            .foregroundColor(.white)
+                            .frame(width: 50)
                     }
-                } else {
-                    Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                        .font(.system(size: 30))
-                        .foregroundColor(.white)
-                        .frame(width: 50)
                 }
-            }
-            .buttonStyle(.plain)
-            .scaleEffect(showPlayIcon ? 0.8 : 1.0)
-            .animation(.spring(response: 0.2), value: player.isPlaying)
-            .padding(.leading, 20)
-            .onChange(of: player.isPlaying) { isPlaying in
-                withAnimation(.spring(response: 0.2)) {
-                    showPlayIcon = true
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                .buttonStyle(.plain)
+                .scaleEffect(showPlayIcon ? 0.8 : 1.0)
+                .animation(.spring(response: 0.2), value: player.isPlaying)
+                .padding(.leading, 20)
+                .onChange(of: player.isPlaying) { isPlaying in
                     withAnimation(.spring(response: 0.2)) {
-                        showPlayIcon = false
+                        showPlayIcon = true
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        withAnimation(.spring(response: 0.2)) {
+                            showPlayIcon = false
+                        }
                     }
                 }
-            }
 
-            // Track info and waveform
-            VStack(alignment: .leading, spacing: 8) {
-                // Waveform
-                HStack(spacing: 8) {
-                    Button(action: {
-                        showRemainingTime.toggle()
-                        Settings.shared.showRemainingTime = showRemainingTime
-                    }) {
-                        Text(formatTime(showRemainingTime ? track.duration - player.currentTime : player.currentTime))
+                // Track info and waveform
+                VStack(alignment: .leading, spacing: 8) {
+                    // Waveform
+                    HStack(spacing: 8) {
+                        Button(action: {
+                            showRemainingTime.toggle()
+                            Settings.shared.showRemainingTime = showRemainingTime
+                        }) {
+                            Text(formatTime(showRemainingTime ? track.duration - player.currentTime : player.currentTime))
+                                .font(.system(
+                                    size: 10, 
+                                    weight: .medium, 
+                                    design: themeManager.isRetroMode ? .monospaced : .monospaced
+                                ))
+                                .foregroundColor(Color.retroText.opacity(0.7))
+                                .frame(width: 45, alignment: .trailing)
+                        }
+                        .buttonStyle(.plain)
+
+                        WaveformView(
+                            url: track.fileURL,
+                            currentTime: player.currentTime,
+                            duration: track.duration,
+                            onSeek: { time in
+                                player.seek(to: time)
+                            }
+                        )
+                        .id(track.fileURL)
+                        .frame(height: 30)
+
+                        Text(formatTime(track.duration))
                             .font(.system(
                                 size: 10, 
                                 weight: .medium, 
                                 design: themeManager.isRetroMode ? .monospaced : .monospaced
                             ))
                             .foregroundColor(Color.retroText.opacity(0.7))
-                            .frame(width: 45, alignment: .trailing)
+                            .frame(width: 45, alignment: .leading)
+                            .padding(.trailing, -20)
                     }
-                    .buttonStyle(.plain)
-
-                    WaveformView(
-                        url: track.fileURL,
-                        currentTime: player.currentTime,
-                        duration: track.duration,
-                        onSeek: { time in
-                            player.seek(to: time)
-                        }
-                    )
-                    .id(track.fileURL)
-                    .frame(height: 30)
-
-                    Text(formatTime(track.duration))
-                        .font(.system(
-                            size: 10, 
-                            weight: .medium, 
-                            design: themeManager.isRetroMode ? .monospaced : .monospaced
-                        ))
-                        .foregroundColor(Color.retroText.opacity(0.7))
-                        .frame(width: 45, alignment: .leading)
-                        .padding(.trailing, -20)
                 }
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
     }
 
     private func formatTime(_ time: TimeInterval) -> String {
@@ -849,7 +856,7 @@ private struct FirstLaunchView: View {
                     toOpen: audioType
                 )
                 print("✓ Registered for public.audio")
-            } catch {
+            } catch let error {
                 print("✗ Failed to register for public.audio: \(error)")
             }
         }
@@ -907,11 +914,15 @@ private struct FirstLaunchView: View {
                                 
                                 // Если не получилось, пробуем через NSWorkspace
                                 if status != noErr, let forceType = UTType(typeId) {
-                                    try? workspace.setDefaultApplication(
-                                        at: Bundle.main.bundleURL,
-                                        toOpen: forceType
-                                    )
-                                    print("  Tried NSWorkspace for \(typeId)")
+                                    do {
+                                        try workspace.setDefaultApplication(
+                                            at: Bundle.main.bundleURL,
+                                            toOpen: forceType
+                                        )
+                                        print("  Tried NSWorkspace for \(typeId)")
+                                    } catch let error {
+                                        print("  NSWorkspace failed: \(error)")
+                                    }
                                 }
                                 
                                 if status == noErr {
@@ -921,10 +932,15 @@ private struct FirstLaunchView: View {
                         }
                     } else {
                         // Для остальных форматов используем стандартный подход
-                        try workspace.setDefaultApplication(
-                            at: Bundle.main.bundleURL,
-                            toOpen: type
-                        )
+                        do {
+                            try workspace.setDefaultApplication(
+                                at: Bundle.main.bundleURL,
+                                toOpen: type
+                            )
+                        } catch let error {
+                            print("Standard approach failed: \(error)")
+                            continue
+                        }
                     }
                     
                     // Проверяем результат
@@ -941,12 +957,11 @@ private struct FirstLaunchView: View {
                         print("✗ Handler not set")
                         print("  Current handler: \(currentHandler ?? "None")")
                     }
-                } catch {
+                } catch let error {
                     failedFormats.append(format.rawValue)
                     print("✗ Error: \(error.localizedDescription)")
                 }
             }
-
         }
         
         // Итоговый отчет
