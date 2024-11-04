@@ -26,7 +26,7 @@
             <key>CFBundleTypeRole</key>
             <string>Editor</string>
             <key>LSHandlerRank</key>
-            <string>Alternate</string>
+            <string>Owner</string>
             <key>LSIsAppleDefaultForType</key>
             <true/>
         </dict>
@@ -44,9 +44,9 @@
             <key>CFBundleTypeName</key>
             <string>WAV Audio</string>
             <key>CFBundleTypeRole</key>
-            <string>Editor</string>
+            <string>Viewer</string>
             <key>LSHandlerRank</key>
-            <string>Alternate</string>
+            <string>Owner</string>
             <key>LSIsAppleDefaultForType</key>
             <true/>
         </dict>
@@ -66,9 +66,17 @@
             <key>CFBundleTypeRole</key>
             <string>Editor</string>
             <key>LSHandlerRank</key>
-            <string>Alternate</string>
+            <string>Owner</string>
             <key>LSIsAppleDefaultForType</key>
             <true/>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.aiff-audio</string>
+                <string>public.aifc-audio</string>
+                <string>com.apple.coreaudio-format</string>
+                <string>public.audio</string>
+                <string>com.apple.quicktime-movie</string>
+            </array>
         </dict>
         <dict>
             <key>CFBundleTypeExtensions</key>
@@ -85,9 +93,17 @@
             <key>CFBundleTypeRole</key>
             <string>Editor</string>
             <key>LSHandlerRank</key>
-            <string>Alternate</string>
+            <string>Owner</string>
             <key>LSIsAppleDefaultForType</key>
             <true/>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.aiff-audio</string>
+                <string>public.aifc-audio</string>
+                <string>com.apple.coreaudio-format</string>
+                <string>public.audio</string>
+                <string>com.apple.quicktime-movie</string>
+            </array>
         </dict>
         <dict>
             <key>CFBundleTypeExtensions</key>
@@ -104,7 +120,7 @@
             <key>CFBundleTypeRole</key>
             <string>Editor</string>
             <key>LSHandlerRank</key>
-            <string>Alternate</string>
+            <string>Owner</string>
             <key>LSIsAppleDefaultForType</key>
             <true/>
         </dict>
@@ -115,5 +131,12 @@
     <string>public.app-category.music</string>
     <key>CFBundleVersion</key>
     <string>1</string>
+    <key>LSMultipleInstancesProhibited</key>
+    <true/>
+    <key>LSEnvironment</key>
+    <dict>
+        <key>LSCanSetDefaultHandler</key>
+        <true/>
+    </dict>
 </dict>
 </plist> 

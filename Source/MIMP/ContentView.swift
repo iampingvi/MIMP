@@ -1,6 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import AVFoundation
+import CoreServices
 
 // Define constants for media keys
 private let NX_KEYTYPE_PLAY: UInt32 = 16
@@ -14,6 +15,10 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @FocusState private var isFocused: Bool
     @StateObject private var themeManager = ThemeManager.shared
+    @State private var seekTimer: Timer?
+    @State private var isSeekingForward = false
+    @State private var isSeekingBackward = false
+    @State private var showingFirstLaunch = Settings.shared.isFirstLaunch
 
     var body: some View {
         ZStack {
@@ -80,6 +85,17 @@ struct ContentView: View {
                     .transition(.move(edge: .top))
                     .zIndex(1)
             }
+
+            // Add first launch overlay
+            if showingFirstLaunch {
+                FirstLaunchView(isPresented: $showingFirstLaunch)
+                    .background(VisualEffectView(
+                        material: themeManager.isRetroMode ? .windowBackground : .hudWindow,
+                        blendingMode: .behindWindow
+                    ))
+                    .transition(AnyTransition.move(edge: .top))
+                    .zIndex(1)
+            }
         }
         .background(
             VisualEffectView(
@@ -90,6 +106,7 @@ struct ContentView: View {
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showingAbout)
         .animation(.easeInOut(duration: 0.2), value: player.currentTrack != nil)
         .animation(.easeInOut(duration: 0.2), value: isDragging)
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showingFirstLaunch)
         .onDrop(of: [.audio], isTargeted: $isDragging) { providers in
             let providers = Array(providers)
             Task { @MainActor in
@@ -100,13 +117,48 @@ struct ContentView: View {
         .focused($isFocused)
         .onAppear {
             isFocused = true
-            NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-                if event.keyCode == 49 { // Space key
+            NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [self] event in
+                switch event.keyCode {
+                case 49: // Space key
                     player.togglePlayPause()
                     return nil
+                case 123: // Left Arrow
+                    if !isSeekingBackward {
+                        isSeekingBackward = true
+                        startSeekTimer(forward: false)
+                    }
+                    return nil
+                case 124: // Right Arrow
+                    if !isSeekingForward {
+                        isSeekingForward = true
+                        startSeekTimer(forward: true)
+                    }
+                    return nil
+                case 126: // Up Arrow
+                    player.adjustVolume(by: 0.05)
+                    return nil
+                case 125: // Down Arrow
+                    player.adjustVolume(by: -0.05)
+                    return nil
+                default:
+                    return event
+                }
+            }
+            
+            NSEvent.addLocalMonitorForEvents(matching: .keyUp) { [self] event in
+                switch event.keyCode {
+                case 123: // Left Arrow
+                    isSeekingBackward = false
+                    stopSeekTimer()
+                case 124: // Right Arrow
+                    isSeekingForward = false
+                    stopSeekTimer()
+                default:
+                    break
                 }
                 return event
             }
+            
             MediaKeyHandler.shared.setCallback {
                 Task { @MainActor in
                     player.togglePlayPause()
@@ -117,6 +169,9 @@ struct ContentView: View {
             if newPhase == .active {
                 isFocused = true
             }
+        }
+        .onDisappear {
+            stopSeekTimer()
         }
     }
 
@@ -150,6 +205,27 @@ struct ContentView: View {
             }
         }
         return nil
+    }
+
+    private func startSeekTimer(forward: Bool) {
+        stopSeekTimer()
+        
+        // Initial seek
+        Task { @MainActor in
+            player.seekRelative(forward ? 3 : -3)
+        }
+        
+        // Start timer for continuous seeking
+        seekTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak player] _ in
+            Task { @MainActor in
+                player?.seekRelative(forward ? 2 : -2)
+            }
+        }
+    }
+    
+    private func stopSeekTimer() {
+        seekTimer?.invalidate()
+        seekTimer = nil
     }
 }
 
@@ -446,7 +522,7 @@ struct AboutView: View {
                         ForEach([
                             ("github-mark", "GitHub", "https://github.com/iampingvi/MIMP"),
                             ("cup.and.saucer.fill", "Support", "https://www.buymeacoffee.com/pingvi"),
-                            ("globe", "Website", "https://iampingvi.github.io/PIMP")
+                            ("globe", "Website", "https://iampingvi.github.io/MIMP")
                         ], id: \.1) { icon, text, urlString in
                             Link(destination: URL(string: urlString)!) {
                                 HStack(spacing: 6) {
@@ -584,6 +660,257 @@ extension View {
             transform(self)
         } else {
             self
+        }
+    }
+}
+
+// Добавляем FirstLaunchView как внутреннюю структуру
+private struct FirstLaunchView: View {
+    @Binding var isPresented: Bool
+    @StateObject private var themeManager = ThemeManager.shared
+    @State private var isSuccess: Bool = false
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Title bar with title
+            HStack {
+                Spacer()
+                Text("Welcome to MIMP!")
+                    .font(.system(
+                        size: 13,
+                        weight: .medium,
+                        design: themeManager.isRetroMode ? .monospaced : .default
+                    ))
+                    .foregroundColor(Color.retroText)
+                Spacer()
+            }
+            .frame(height: 28)
+            
+            // Main content
+            HStack(spacing: 30) {
+                // Column 1 - App Icon
+                VStack(alignment: .center, spacing: 8) {
+                    if let appIcon = NSImage(named: "AppIcon") {
+                        Image(nsImage: appIcon)
+                            .resizable()
+                            .frame(width: 64, height: 64)
+                            .cornerRadius(themeManager.isRetroMode ? 0 : 15)
+                            .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
+                    }
+                }
+                .frame(width: 120)
+
+                // Column 2 - Description
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Would you like to set MIMP\nas the default player?")
+                        .font(.system(
+                            size: 11,
+                            design: themeManager.isRetroMode ? .monospaced : .default
+                        ))
+                        .foregroundColor(Color.retroText.opacity(0.8))
+                        .multilineTextAlignment(.leading)
+                }
+                .frame(width: 140, alignment: .leading)
+
+                // Column 3 - Formats
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(themeManager.isRetroMode ? 
+                        "Formats: [\(AudioFormat.formatsDescription)]" :
+                        "Formats: (\(AudioFormat.formatsDescription))")
+                        .font(.system(
+                            size: 11,
+                            design: themeManager.isRetroMode ? .monospaced : .default
+                        ))
+                        .foregroundColor(Color.retroText.opacity(0.7))
+                }
+                .frame(width: 120)
+
+                // Column 4 - Buttons and Status
+                VStack(alignment: .trailing, spacing: 6) {
+                    if isSuccess {
+                        Text("✓ Set as Default")
+                            .font(.system(
+                                size: 11,
+                                design: themeManager.isRetroMode ? .monospaced : .default
+                            ))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(Color.green)
+                            )
+                    } else {
+                        HStack(spacing: 8) {
+                            Button(action: {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    isPresented = false
+                                    Settings.shared.isFirstLaunch = false
+                                }
+                            }) {
+                                Text("Maybe Later")
+                                    .font(.system(
+                                        size: 11,
+                                        design: themeManager.isRetroMode ? .monospaced : .default
+                                    ))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .fill(Color.white.opacity(0.2))
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                            .opacity(0.9)
+                            .hover { hovering in
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    if let button = NSApp.keyWindow?.contentView?.hitTest(NSEvent.mouseLocation)?.enclosingScrollView {
+                                        button.alphaValue = hovering ? 1 : 0.9
+                                    }
+                                }
+                            }
+
+                            Button(action: {
+                                setAsDefaultPlayer()
+                                withAnimation {
+                                    isSuccess = true
+                                }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                        isPresented = false
+                                        Settings.shared.isFirstLaunch = false
+                                    }
+                                }
+                            }) {
+                                Text("Set as Default")
+                                    .font(.system(
+                                        size: 11,
+                                        design: themeManager.isRetroMode ? .monospaced : .default
+                                    ))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .fill(Color.blue)
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                            .contentShape(Rectangle())
+                            .opacity(0.9)
+                            .hover { hovering in
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    if let button = NSApp.keyWindow?.contentView?.hitTest(NSEvent.mouseLocation)?.enclosingScrollView {
+                                        button.alphaValue = hovering ? 1 : 0.9
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                .frame(width: 260)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+        }
+        .frame(minWidth: 600, idealWidth: 800, maxWidth: .infinity, minHeight: 128, idealHeight: 128, maxHeight: 128)
+        .background(
+            VisualEffectView(
+                material: themeManager.isRetroMode ? .windowBackground : .hudWindow,
+                blendingMode: .behindWindow
+            )
+        )
+    }
+    
+    private func setAsDefaultPlayer() {
+        let workspace = NSWorkspace.shared
+        var successCount = 0
+        var failedFormats: [String] = []
+        
+        // Регистрируем приложение для всех аудио файлов
+        if let audioType = UTType("public.audio") {
+            do {
+                try workspace.setDefaultApplication(
+                    at: Bundle.main.bundleURL,
+                    toOpen: audioType
+                )
+            } catch {
+                print("Failed to register for public.audio: \(error)")
+            }
+        }
+        
+        // Принудительная установка для проблемных форматов
+        let forceTypes = [
+            "aiff": [
+                "public.aiff-audio",
+                "public.aifc-audio",
+                "com.apple.coreaudio-format",
+                "public.audio",
+                "com.apple.quicktime-movie"
+            ],
+            "m4a": [
+                "public.mpeg-4-audio",
+                "com.apple.m4a-audio",
+                "public.audio",
+                "com.apple.quicktime-movie",
+                "public.mpeg-4"
+            ]
+        ]
+        
+        // Пробуем установить для каждого формата
+        for format in AudioFormat.allCases {
+            if let type = UTType(filenameExtension: format.rawValue) {
+                do {
+                    // Для проблемных форматов используем принудительную установку
+                    if format.rawValue == "aiff" || format.rawValue == "m4a" {
+                        // Регистрируем приложение
+                        LSRegisterURL(Bundle.main.bundleURL as CFURL, true)
+                        
+                        // Устанавливаем для всех возможных типов
+                        if let types = forceTypes[format.rawValue] {
+                            for typeId in types {
+                                LSSetDefaultRoleHandlerForContentType(
+                                    typeId as CFString,
+                                    LSRolesMask.all,
+                                    Bundle.main.bundleIdentifier! as CFString
+                                )
+                                
+                                if let forceType = UTType(typeId) {
+                                    try? workspace.setDefaultApplication(
+                                        at: Bundle.main.bundleURL,
+                                        toOpen: forceType
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        // Для остальных форматов используем стандартный подход
+                        try workspace.setDefaultApplication(
+                            at: Bundle.main.bundleURL,
+                            toOpen: type
+                        )
+                    }
+                    
+                    // Проверяем результат
+                    if let newHandler = LSCopyDefaultRoleHandlerForContentType(
+                        type.identifier as CFString,
+                        LSRolesMask.viewer
+                    )?.takeRetainedValue() as String?,
+                       newHandler == Bundle.main.bundleIdentifier {
+                        successCount += 1
+                    } else {
+                        failedFormats.append(format.rawValue)
+                    }
+                } catch {
+                    failedFormats.append(format.rawValue)
+                }
+            }
+        }
+        
+        // Показываем успех, если хотя бы один формат установлен
+        if successCount > 0 {
+            isSuccess = true
         }
     }
 }

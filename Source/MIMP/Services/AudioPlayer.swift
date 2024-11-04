@@ -401,6 +401,20 @@ final class AudioPlayer: ObservableObject {
             Settings.shared.volume = 0
         }
     }
+
+    // Add new methods for seeking and volume control with steps
+    func seekRelative(_ offset: TimeInterval) {
+        guard let player = player,
+              let track = currentTrack else { return }
+        
+        let newTime = max(0, min(track.duration, currentTime + offset))
+        seek(to: newTime)
+    }
+    
+    func adjustVolume(by delta: Float) {
+        let newVolume = max(0, min(1, volume + delta))
+        setVolume(newVolume)
+    }
 }
 
 struct AudioMetadata: Sendable {
