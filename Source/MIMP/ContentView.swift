@@ -110,7 +110,7 @@ struct ContentView: View {
                 }
             }
         }
-        .onChange(of: scenePhase) { _, newPhase in
+        .onChange(of: scenePhase) { newPhase in
             if newPhase == .active {
                 isFocused = true
             }
@@ -118,14 +118,20 @@ struct ContentView: View {
     }
 
     private func handleDrop(_ providers: [NSItemProvider]) async {
-        guard let provider = providers.first else { return }
-        let typeIdentifier = UTType.audio.identifier
-
-        if provider.hasItemConformingToTypeIdentifier(typeIdentifier) {
-            if let item = try? await provider.loadItem(forTypeIdentifier: typeIdentifier),
-               let url = item as? URL,
+        @Sendable func loadItem(_ provider: NSItemProvider) async throws -> URL? {
+            if provider.hasItemConformingToTypeIdentifier(UTType.audio.identifier) {
+                if let item = try await provider.loadItem(forTypeIdentifier: UTType.audio.identifier) as? URL {
+                    return item
+                }
+            }
+            return nil
+        }
+        
+        for provider in providers {
+            if let url = try? await loadItem(provider),
                AudioFormat.allExtensions.contains(url.pathExtension.lowercased()) {
                 try? await player.load(url: url)
+                break
             }
         }
     }
@@ -149,10 +155,21 @@ struct PlayerInterface: View {
                     .font(.system(size: 30))
                     .foregroundColor(.white)
                     .frame(width: 50)
-                    .contentTransition(.symbolEffect(.replace))
+                    .scaleEffect(showPlayIcon ? 0.8 : 1.0)
+                    .animation(.spring(response: 0.2), value: player.isPlaying)
             }
             .buttonStyle(.plain)
             .padding(.leading, 20)
+            .onChange(of: player.isPlaying) { isPlaying in
+                withAnimation(.spring(response: 0.2)) {
+                    showPlayIcon = true
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    withAnimation(.spring(response: 0.2)) {
+                        showPlayIcon = false
+                    }
+                }
+            }
 
             // Track info and waveform
             VStack(alignment: .leading, spacing: 8) {

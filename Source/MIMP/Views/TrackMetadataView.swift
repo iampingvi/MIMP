@@ -8,13 +8,11 @@ struct TrackMetadataView: View {
         HStack(spacing: 20) {
             HStack(spacing: 8) {
                 Image(systemName: "metronome")
-                    .symbolEffect(.bounce, options: .repeating)
                 Text("\(Int(bpm)) BPM")
             }
             
             HStack(spacing: 8) {
                 Image(systemName: "music.note")
-                    .symbolEffect(.pulse)
                 Text(key)
             }
         }

@@ -60,7 +60,7 @@ class MediaKeyHandler {
             self.eventHandler = handler
 
             // Register a hotkey for Play/Pause
-            var hotKeyID = EventHotKeyID(signature: 0x4D4B4859, id: 1) // MKHY
+            let hotKeyID = EventHotKeyID(signature: 0x4D4B4859, id: 1) // MKHY
             var hotKeyRef: EventHotKeyRef?
 
             RegisterEventHotKey(

@@ -7,14 +7,17 @@ class AudioAnalyzer {
 
     func analyzeAudio(url: URL) async throws -> AudioAnalysis {
         let file = try AVAudioFile(forReading: url)
-        let buffer = try AVAudioPCMBuffer(pcmFormat: file.processingFormat,
-                                         frameCapacity: AVAudioFrameCount(file.length))
+        let frameCapacity = AVAudioFrameCount(file.length)
+        let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: frameCapacity)
+        
         guard let buffer = buffer else {
             throw AudioError.failedToAnalyze(NSError(domain: "", code: -1))
         }
-
+        
+        try file.read(into: buffer)
+        
         let waveform = generateWaveform(buffer: buffer)
-        let bpm = try await analyzeBPM(buffer: buffer)
+        let bpm = analyzeBPM(buffer: buffer)
 
         return AudioAnalysis(
             bpm: bpm,
@@ -23,7 +26,7 @@ class AudioAnalyzer {
         )
     }
 
-    private func analyzeBPM(buffer: AVAudioPCMBuffer) async throws -> Double {
+    private func analyzeBPM(buffer: AVAudioPCMBuffer) -> Double {
         guard let channelData = buffer.floatChannelData?[0],
               buffer.frameLength > 0 else {
             return 120.0

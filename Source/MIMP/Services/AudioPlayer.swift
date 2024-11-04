@@ -46,11 +46,11 @@ final class AudioPlayer: ObservableObject {
 
     deinit {
         Task { @MainActor in
-            await cleanupResources()
+            cleanupResources()
         }
     }
 
-    private func cleanupResources() async {
+    private func cleanupResources() {
         guard !cleanupFlag else { return }
         cleanupFlag = true
 
@@ -79,9 +79,8 @@ final class AudioPlayer: ObservableObject {
 
     private func setupKeyboardMonitor() {
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event -> NSEvent? in
-            guard let self = self else { return event }
             if event.keyCode == 49 { // Space key
-                self.togglePlayPause()
+                self?.togglePlayPause()
                 return nil
             }
             return event
@@ -218,13 +217,13 @@ final class AudioPlayer: ObservableObject {
 
     private func loadMetadata(from asset: AVURLAsset) async throws -> AudioMetadata {
         let commonMetadata = try await asset.load(.commonMetadata)
-
         var title: String?
         var artist: String?
         var tags: [String] = []
 
         for item in commonMetadata {
-            if let key = try await item.commonKey {
+            let key = try await item.commonKey
+            if let key = key {
                 switch key {
                 case .commonKeyTitle:
                     title = try await item.load(.stringValue)
@@ -243,18 +242,20 @@ final class AudioPlayer: ObservableObject {
 
     private func loadArtwork(from asset: AVURLAsset) async throws -> URL? {
         let metadata = try await asset.load(.commonMetadata)
-
+        
         for item in metadata {
-            if let key = try await item.commonKey,
-               key == .commonKeyArtwork,
-               let data = try await item.load(.dataValue) {
-                let tempURL = FileManager.default.temporaryDirectory
-                    .appendingPathComponent(UUID().uuidString + ".jpg")
-                try data.write(to: tempURL)
-                return tempURL
+            let key = try await item.commonKey
+            if key == .commonKeyArtwork {
+                let data = try await item.load(.dataValue)
+                if let data = data {
+                    let tempURL = FileManager.default.temporaryDirectory
+                        .appendingPathComponent(UUID().uuidString + ".jpg")
+                    try data.write(to: tempURL)
+                    return tempURL
+                }
             }
         }
-
+        
         return nil
     }
 
@@ -264,7 +265,6 @@ final class AudioPlayer: ObservableObject {
             guard let self = self else { return }
             do {
                 let analysis = try await self.analyzer.analyzeAudio(url: url)
-
                 guard let track = self.currentTrack else { return }
                 self.currentTrack = Track(
                     title: track.title,
