@@ -190,7 +190,7 @@ struct ContentView: View {
                 // Добавляем нажатую клавишу
                 pressedKeys.insert(key)
                 
-                // Проверяем последовательность "deuse"
+                // Проверяем последоваельность "deuse"
                 let sequence = "deuse"
                 if sequence.allSatisfy({ pressedKeys.contains(String($0)) }) {
                     resetDefaultPlayer()
@@ -496,6 +496,7 @@ struct AboutView: View {
     @StateObject private var updateManager = UpdateManager.shared
     @State private var isSuccess = false
     @State private var refreshTrigger = false
+    @State private var isHeartHovered = false
 
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
@@ -510,8 +511,6 @@ struct AboutView: View {
     }
 
     private func checkDefaultPlayerStatus() -> Bool {
-        let workspace = NSWorkspace.shared
-        
         // Проверяем все форматы
         for format in AudioFormat.allCases {
             if let type = UTType(filenameExtension: format.rawValue),
@@ -689,25 +688,6 @@ struct AboutView: View {
                     .font(.system(size: 12))
                     .foregroundColor(.white)
                     .frame(width: 120)
-
-                    // Column 4 - Credits
-                    VStack(alignment: .trailing, spacing: 6) {
-                        Text("Made with ♥︎ by PINGVI")
-                            .font(.system(
-                                size: 11,
-                                design: themeManager.isRetroMode ? .monospaced : .default
-                            ))
-                            .foregroundColor(Color.retroText.opacity(0.7))
-                            .fixedSize(horizontal: true, vertical: false)
-                        Text("© 2024")
-                            .font(.system(
-                                size: 11,
-                                design: themeManager.isRetroMode ? .monospaced : .default
-                            ))
-                            .foregroundColor(Color.retroText.opacity(0.7))
-                            .padding(.top, 2)
-                    }
-                    .frame(width: 160)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.trailing, 20)
@@ -802,6 +782,63 @@ struct AboutView: View {
                 .animation(.easeInOut(duration: 0.2), value: getDefaultPlayerStatus())
                 .animation(.easeInOut(duration: 0.2), value: refreshTrigger)
                 .padding(.leading, 20)
+                
+                Spacer()
+                
+                // Центральная часть - credits
+                HStack(spacing: 4) {
+                    Text("Made with")
+                        .font(.system(
+                            size: 12,
+                            design: themeManager.isRetroMode ? .monospaced : .default
+                        ))
+                        .foregroundColor(Color.retroText.opacity(0.7))
+                    
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(
+                            LinearGradient(
+                                stops: [
+                                    .init(color: isHeartHovered ? 
+                                          Color(red: 0/255, green: 87/255, blue: 183/255) : // Синий
+                                          Color.retroText.opacity(0.7), 
+                                          location: 0.5),
+                                    .init(color: isHeartHovered ? 
+                                          Color(red: 0/255, green: 87/255, blue: 183/255) : // Синий
+                                          Color.retroText.opacity(0.7), 
+                                          location: 0.5),
+                                    .init(color: isHeartHovered ? 
+                                          Color(red: 255/255, green: 215/255, blue: 0/255) : // Желтый
+                                          Color.retroText.opacity(0.7), 
+                                          location: 0.5),
+                                    .init(color: isHeartHovered ? 
+                                          Color(red: 255/255, green: 215/255, blue: 0/255) : // Желтый
+                                          Color.retroText.opacity(0.7), 
+                                          location: 1.0)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .scaleEffect(isHeartHovered ? 1.2 : 1.0)
+                        .onHover { hovering in
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                isHeartHovered = hovering
+                            }
+                        }
+                        .animation(
+                            .easeInOut(duration: 0.5)
+                            .repeatForever(autoreverses: true),
+                            value: isHeartHovered && isHeartHovered // Добавляем дополнительное условие
+                        )
+                    
+                    Text("by PINGVI")
+                        .font(.system(
+                            size: 12,
+                            design: themeManager.isRetroMode ? .monospaced : .default
+                        ))
+                        .foregroundColor(Color.retroText.opacity(0.7))
+                }
                 
                 Spacer()
                 
@@ -1038,7 +1075,7 @@ class NonDraggableNSView: NSView {
     
     // Перехватываем событие мыши, чтобы предотратить его распространение
     override func mouseDown(with event: NSEvent) {
-        // Не передаем событие дальше
+        // Не передаем событие дальш
     }
 }
 
