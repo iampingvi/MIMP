@@ -200,6 +200,15 @@ struct ContentView: View {
                 
                 return event
             }
+            
+            NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+                // Use keyCode 46 which is 'M' key in any layout
+                if event.keyCode == 46 {  // 46 is 'M' key
+                    player.toggleMute()
+                    return nil
+                }
+                return event
+            }
         }
         .onChange(of: scenePhase) { newPhase in
             if newPhase == .active {
