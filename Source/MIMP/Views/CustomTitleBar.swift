@@ -9,74 +9,81 @@ struct CustomTitleBar: View {
     @State private var autoUpdateEnabled = Settings.shared.autoUpdateEnabled
     
     var body: some View {
-        HStack(spacing: 0) {
-            // Левая часть с кнопками
-            HStack(spacing: 8) {
-                // Кнопка закрытия
-                WindowButton(
-                    color: themeManager.isRetroMode ? .green : .red,
-                    symbol: "xmark",
-                    isRetroStyle: themeManager.isRetroMode
-                )
-                .help("Close")
-                .onTapGesture {
-                    NSApplication.shared.terminate(nil)
-                }
-                
-                // Кнопка About
-                WindowButton(
-                    color: .gray, 
-                    symbol: "info.circle",
-                    isRetroStyle: themeManager.isRetroMode
-                )
-                .help("About")
-                .onTapGesture {
-                    showingAbout.toggle()
-                }
-                
-                // Кнопка обновления
-                if updateManager.isUpdateAvailable && autoUpdateEnabled {
+        ZStack {
+            // Фоновый слой с текстом по центру
+            GeometryReader { geometry in
+                Text(titleText)
+                    .font(.system(
+                        size: 13,
+                        design: themeManager.isRetroMode ? .monospaced : .default
+                    ))
+                    .foregroundColor(Color.retroText)
+                    .lineLimit(1)
+                    .frame(width: geometry.size.width * 0.75, alignment: .center) // 70% ширины окна
+                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2) // Точно по центру
+                    .contentShape(Rectangle())
+                    .mask(
+                        LinearGradient(
+                            gradient: Gradient(colors: [.clear, .black, .black, .black, .clear]),
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .background(WindowDraggingView())
+                    .onTapGesture(count: 2) {
+                        if let window = NSApp.mainWindow {
+                            window.toggleExpand()
+                        }
+                    }
+            }
+            
+            // Передний слой с кнопками
+            HStack {
+                // Левая часть с кнопками
+                HStack(spacing: 8) {
+                    // Кнопка закрытия
                     WindowButton(
-                        color: .blue,
-                        symbol: "arrow.triangle.2.circlepath",
+                        color: themeManager.isRetroMode ? .green : .red,
+                        symbol: "xmark",
                         isRetroStyle: themeManager.isRetroMode
                     )
-                    .help("Update Available")
+                    .help("Close")
                     .onTapGesture {
-                        updateManager.showingUpdate = true
+                        NSApplication.shared.terminate(nil)
                     }
-                }
-            }
-            .padding(.leading, 12)
-            
-            // Центральная часть с названием
-            Text(titleText)
-                .font(.system(
-                    size: 13,
-                    design: themeManager.isRetroMode ? .monospaced : .default
-                ))
-                .foregroundColor(Color.retroText)
-                .lineLimit(1)
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 16)
-                .contentShape(Rectangle())
-                .mask(
-                    LinearGradient(
-                        gradient: Gradient(colors: [.black, .black, .clear]),
-                        startPoint: .leading,
-                        endPoint: .trailing
+                    
+                    // Кнопка About
+                    WindowButton(
+                        color: .gray, 
+                        symbol: "info.circle",
+                        isRetroStyle: themeManager.isRetroMode
                     )
-                )
-                .background(WindowDraggingView())
-                .onTapGesture(count: 2) {
-                    if let window = NSApp.mainWindow {
-                        window.toggleExpand()
+                    .help("About")
+                    .onTapGesture {
+                        showingAbout.toggle()
+                    }
+                    
+                    // Кнопка обновления
+                    if updateManager.isUpdateAvailable && autoUpdateEnabled {
+                        WindowButton(
+                            color: .blue,
+                            symbol: "arrow.triangle.2.circlepath",
+                            isRetroStyle: themeManager.isRetroMode
+                        )
+                        .help("Update Available")
+                        .onTapGesture {
+                            updateManager.showingUpdate = true
+                        }
                     }
                 }
-            
-            // Правая часть с регулятором громкости
-            VolumeControl(player: player)
-                .padding(.trailing, 8)
+                .padding(.leading, 12)
+                
+                Spacer()
+                
+                // Правая часть с регулятором громкости
+                VolumeControl(player: player)
+                    .padding(.trailing, 8)
+            }
         }
         .frame(height: height)
         .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in

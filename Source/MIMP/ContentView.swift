@@ -709,9 +709,115 @@ struct AboutView: View {
             Divider()
                 .background(Color.retroText.opacity(0.2))
                 .padding(.horizontal, 20)
-            
-            HStack {
-                // Левая часть - статус форматов
+
+            ZStack {
+                // Левая часть - автообновления (прижата к левому краю)
+                Button(action: {
+                    autoUpdateEnabled.toggle()
+                    Settings.shared.autoUpdateEnabled = autoUpdateEnabled
+                    
+                    if autoUpdateEnabled {
+                        Task {
+                            await updateManager.checkForUpdates(force: true)
+                        }
+                    }
+                }) {
+                    HStack(spacing: 6) {
+                        // Стилизованный чекбокс автообновлений
+                        ZStack {
+                            if themeManager.isRetroMode {
+                                Rectangle()
+                                    .stroke(Color.retroText.opacity(0.7), lineWidth: 1)
+                                    .frame(width: 14, height: 14)
+                            } else {
+                                RoundedRectangle(cornerRadius: 3)
+                                    .stroke(Color.retroText.opacity(0.7), lineWidth: 1)
+                                    .frame(width: 14, height: 14)
+                            }
+                            
+                            if autoUpdateEnabled {
+                                if themeManager.isRetroMode {
+                                    Text("×")
+                                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                        .foregroundColor(Color.retroText)
+                                } else {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 9, weight: .bold))
+                                        .foregroundColor(Color.retroText)
+                                }
+                            }
+                        }
+                        
+                        Text("Check for updates automatically")
+                            .font(.system(
+                                size: 11,
+                                design: themeManager.isRetroMode ? .monospaced : .default
+                            ))
+                            .foregroundColor(Color.retroText.opacity(0.7))
+                    }
+                    .contentShape(Rectangle()) // Добавляем это для расширения области нажатия
+                }
+                .buttonStyle(.plain)
+                .padding(.leading, 20)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                
+                // Центральная часть - credits (абсолютно по центру)
+                HStack(spacing: 4) {
+                    Text("Made with")
+                        .font(.system(
+                            size: 12,
+                            design: themeManager.isRetroMode ? .monospaced : .default
+                        ))
+                        .foregroundColor(Color.retroText.opacity(0.7))
+                    
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(
+                            LinearGradient(
+                                stops: [
+                                    .init(color: isHeartHovered ? 
+                                          Color(red: 0/255, green: 87/255, blue: 183/255) : // Синий
+                                          Color.retroText.opacity(0.7), 
+                                          location: 0.5),
+                                    .init(color: isHeartHovered ? 
+                                          Color(red: 0/255, green: 87/255, blue: 183/255) : // Синий
+                                          Color.retroText.opacity(0.7), 
+                                          location: 0.5),
+                                    .init(color: isHeartHovered ? 
+                                          Color(red: 255/255, green: 215/255, blue: 0/255) : // Желтый
+                                          Color.retroText.opacity(0.7), 
+                                          location: 0.5),
+                                    .init(color: isHeartHovered ? 
+                                          Color(red: 255/255, green: 215/255, blue: 0/255) : // Желтый
+                                          Color.retroText.opacity(0.7), 
+                                          location: 1.0)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .scaleEffect(isHeartHovered ? 1.2 : 1.0)
+                        .onHover { hovering in
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                isHeartHovered = hovering
+                            }
+                        }
+                        .animation(
+                            .easeInOut(duration: 0.5)
+                            .repeatForever(autoreverses: true),
+                            value: isHeartHovered && isHeartHovered
+                        )
+                    
+                    Text("by PINGVI")
+                        .font(.system(
+                            size: 12,
+                            design: themeManager.isRetroMode ? .monospaced : .default
+                        ))
+                        .foregroundColor(Color.retroText.opacity(0.7))
+                }
+                .frame(width: 200)
+                
+                // Правая часть - статус форматов (прижата к правому краю)
                 HStack(spacing: 6) {
                     switch getDefaultPlayerStatus() {
                     case .none:
@@ -779,7 +885,7 @@ struct AboutView: View {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.system(size: 11))
                                 .foregroundColor(.green)
-                            Text("Default player for all formats")
+                            Text("Set as default")
                                 .font(.system(
                                     size: 11,
                                     design: themeManager.isRetroMode ? .monospaced : .default
@@ -790,114 +896,8 @@ struct AboutView: View {
                 }
                 .animation(.easeInOut(duration: 0.2), value: getDefaultPlayerStatus())
                 .animation(.easeInOut(duration: 0.2), value: refreshTrigger)
-                .padding(.leading, 20)
-                
-                Spacer()
-                
-                // Центральная часть - credits
-                HStack(spacing: 4) {
-                    Text("Made with")
-                        .font(.system(
-                            size: 12,
-                            design: themeManager.isRetroMode ? .monospaced : .default
-                        ))
-                        .foregroundColor(Color.retroText.opacity(0.7))
-                    
-                    Image(systemName: "heart.fill")
-                        .font(.system(size: 10))
-                        .foregroundStyle(
-                            LinearGradient(
-                                stops: [
-                                    .init(color: isHeartHovered ? 
-                                          Color(red: 0/255, green: 87/255, blue: 183/255) : // Синий
-                                          Color.retroText.opacity(0.7), 
-                                          location: 0.5),
-                                    .init(color: isHeartHovered ? 
-                                          Color(red: 0/255, green: 87/255, blue: 183/255) : // Синий
-                                          Color.retroText.opacity(0.7), 
-                                          location: 0.5),
-                                    .init(color: isHeartHovered ? 
-                                          Color(red: 255/255, green: 215/255, blue: 0/255) : // Желтый
-                                          Color.retroText.opacity(0.7), 
-                                          location: 0.5),
-                                    .init(color: isHeartHovered ? 
-                                          Color(red: 255/255, green: 215/255, blue: 0/255) : // Желтый
-                                          Color.retroText.opacity(0.7), 
-                                          location: 1.0)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .scaleEffect(isHeartHovered ? 1.2 : 1.0)
-                        .onHover { hovering in
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                isHeartHovered = hovering
-                            }
-                        }
-                        .animation(
-                            .easeInOut(duration: 0.5)
-                            .repeatForever(autoreverses: true),
-                            value: isHeartHovered && isHeartHovered // Добавляем дополнительное условие
-                        )
-                    
-                    Text("by PINGVI")
-                        .font(.system(
-                            size: 12,
-                            design: themeManager.isRetroMode ? .monospaced : .default
-                        ))
-                        .foregroundColor(Color.retroText.opacity(0.7))
-                }
-                
-                Spacer()
-                
-                // Правая часть - автообновления
-                Button(action: {
-                    autoUpdateEnabled.toggle()
-                    Settings.shared.autoUpdateEnabled = autoUpdateEnabled
-                    
-                    if autoUpdateEnabled {
-                        Task {
-                            await updateManager.checkForUpdates(force: true)
-                        }
-                    }
-                }) {
-                    HStack(spacing: 6) {
-                        // Стилизованный чекбокс автообновлений
-                        ZStack {
-                            if themeManager.isRetroMode {
-                                Rectangle()
-                                    .stroke(Color.retroText.opacity(0.7), lineWidth: 1)
-                                    .frame(width: 14, height: 14)
-                            } else {
-                                RoundedRectangle(cornerRadius: 3)
-                                    .stroke(Color.retroText.opacity(0.7), lineWidth: 1)
-                                    .frame(width: 14, height: 14)
-                            }
-                            
-                            if autoUpdateEnabled {
-                                if themeManager.isRetroMode {
-                                    Text("×")
-                                        .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                        .foregroundColor(Color.retroText)
-                                } else {
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 9, weight: .bold))
-                                        .foregroundColor(Color.retroText)
-                                }
-                            }
-                        }
-                        
-                        Text("Check for updates automatically")
-                            .font(.system(
-                                size: 11,
-                                design: themeManager.isRetroMode ? .monospaced : .default
-                            ))
-                            .foregroundColor(Color.retroText.opacity(0.7))
-                    }
-                }
-                .buttonStyle(.plain)
                 .padding(.trailing, 20)
+                .frame(maxWidth: .infinity, alignment: .trailing)
             }
             .frame(height: 28)
         }

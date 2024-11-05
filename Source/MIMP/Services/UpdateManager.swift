@@ -7,9 +7,9 @@ class UpdateManager: NSObject, ObservableObject {
     
     @Published var isUpdateAvailable = false {
         didSet {
-            // Показываем иконку обновления только если обновление доступно И включены автообновления
-            if !Settings.shared.autoUpdateEnabled {
-                isUpdateAvailable = false
+            // Показываем иконку обновления только если обновление доступно
+            if !isUpdateAvailable {
+                showingUpdate = false
             }
         }
     }
@@ -196,7 +196,7 @@ class UpdateManager: NSObject, ObservableObject {
                 try fileManager.removeItem(at: backupURL)
             }
             
-            // Преиеновываем текущую версию �� .old
+            // Преиеновыва��м текущую версию  .old
             try fileManager.moveItem(at: oldAppURL, to: backupURL)
             
             // Копируем новую версию на место старой
