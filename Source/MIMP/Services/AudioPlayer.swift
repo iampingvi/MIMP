@@ -460,10 +460,9 @@ final class AudioPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
 
     // Add new methods for seeking and volume control with steps
     func seekRelative(_ offset: TimeInterval) {
-        guard let player = player,
-              let track = currentTrack else { return }
+        guard let currentTrack = currentTrack else { return }
         
-        let newTime = max(0, min(track.duration, currentTime + offset))
+        let newTime = max(0, min(currentTrack.duration, currentTime + offset))
         seek(to: newTime)
     }
     
@@ -486,7 +485,7 @@ final class AudioPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
 
     // Update the delegate method to be nonisolated
-    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+    nonisolated func audioPlayerDidFinishPlaying(_ _: AVAudioPlayer, successfully flag: Bool) {
         Task { @MainActor in
             // Reset playback position to start
             self.currentTime = 0

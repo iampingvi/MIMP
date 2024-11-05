@@ -13,7 +13,7 @@ struct CustomTitleBar: View {
         ZStack {
             // Фоновый слой с текстом по центру
             GeometryReader { geometry in
-                if let track = player.currentTrack {
+                if player.currentTrack != nil {
                     // Show track info
                     Text(titleText)
                         .font(.system(
