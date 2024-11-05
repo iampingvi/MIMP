@@ -118,6 +118,7 @@ struct CustomTitleBar: View {
                 // Правая часть с регулятором громкости
                 VolumeControl(player: player)
                     .padding(.trailing, 8)
+                    .id("volumeControl")
             }
         }
         .frame(height: height)

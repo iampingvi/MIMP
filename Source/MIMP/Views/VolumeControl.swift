@@ -47,8 +47,14 @@ struct VolumeControl: View {
             )
             .frame(width: 50)
             .controlSize(.mini)
-            .tint(Color.retroAccent)
+            .tint(themeManager.isRetroMode ? Color.green : Color.accentColor)
             .help("Volume")
+            .onAppear {
+                // Принудительно обновляем tint при появлении
+                DispatchQueue.main.async {
+                    self.themeManager.objectWillChange.send()
+                }
+            }
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 3)
