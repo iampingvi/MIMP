@@ -20,6 +20,8 @@ struct ContentView: View {
     @State private var isSeekingBackward = false
     @State private var showingFirstLaunch = Settings.shared.isFirstLaunch
     @StateObject private var updateManager = UpdateManager.shared
+    @State private var pressedKeys: Set<String> = []
+    @State private var lastKeyPressTime: Date = Date()
 
     var body: some View {
         ZStack {
@@ -173,6 +175,31 @@ struct ContentView: View {
                     player.togglePlayPause()
                 }
             }
+            
+            // Добавляем обработчик клавиатуры для сброса форматов
+            NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [self] event in
+                let key = event.charactersIgnoringModifiers?.lowercased() ?? ""
+                let currentTime = Date()
+                
+                // Сбрасываем нажатые клавиши если прошло больше 1 секунды
+                if currentTime.timeIntervalSince(lastKeyPressTime) > 1.0 {
+                    pressedKeys.removeAll()
+                }
+                lastKeyPressTime = currentTime
+                
+                // Добавляем нажатую клавишу
+                pressedKeys.insert(key)
+                
+                // Проверяем последовательность "deuse"
+                let sequence = "deuse"
+                if sequence.allSatisfy({ pressedKeys.contains(String($0)) }) {
+                    resetDefaultPlayer()
+                    pressedKeys.removeAll()
+                    return nil
+                }
+                
+                return event
+            }
         }
         .onChange(of: scenePhase) { newPhase in
             if newPhase == .active {
@@ -235,6 +262,29 @@ struct ContentView: View {
     private func stopSeekTimer() {
         seekTimer?.invalidate()
         seekTimer = nil
+    }
+    
+    private func resetDefaultPlayer() {
+        print("\n=== Resetting MIMP Default Player Settings ===")
+        
+        for format in AudioFormat.allCases {
+            if let type = UTType(filenameExtension: format.rawValue) {
+                print("\nResetting .\(format.rawValue)")
+                
+                let status = LSSetDefaultRoleHandlerForContentType(
+                    type.identifier as CFString,
+                    LSRolesMask.all,
+                    "com.apple.quicktimeplayer" as CFString  // Сбрасываем на QuickTime Player
+                )
+                
+                print(status == noErr ? "✓ Reset successful" : "✗ Reset failed")
+            }
+        }
+        
+        // Сбрасываем настройку в Settings
+        Settings.shared.isDefaultPlayerSet = false
+        
+        print("\n=== Reset Complete ===\n")
     }
 }
 
@@ -442,7 +492,10 @@ struct AboutView: View {
     @Binding var showingAbout: Bool
     @StateObject private var themeManager = ThemeManager.shared
     @State private var autoUpdateEnabled = Settings.shared.autoUpdateEnabled
+    @State private var isDefaultPlayerSet = Settings.shared.isDefaultPlayerSet
     @StateObject private var updateManager = UpdateManager.shared
+    @State private var isSuccess = false
+    @State private var refreshTrigger = false
 
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
@@ -454,6 +507,62 @@ struct AboutView: View {
 
     private var appName: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "MIMP"
+    }
+
+    private func checkDefaultPlayerStatus() -> Bool {
+        let workspace = NSWorkspace.shared
+        
+        // Проверяем все форматы
+        for format in AudioFormat.allCases {
+            if let type = UTType(filenameExtension: format.rawValue),
+               let handler = LSCopyDefaultRoleHandlerForContentType(
+                type.identifier as CFString,
+                LSRolesMask.viewer
+               )?.takeRetainedValue() as String? {
+                // Если хотя бы один формат не устанолен для нашего приложения
+                if handler != Bundle.main.bundleIdentifier {
+                    return false
+                }
+            } else {
+                return false
+            }
+        }
+        return true
+    }
+
+    private func getUnsetFormats() -> [String] {
+        var unsetFormats: [String] = []
+        for format in AudioFormat.allCases {
+            if let type = UTType(filenameExtension: format.rawValue),
+               let handler = LSCopyDefaultRoleHandlerForContentType(
+                type.identifier as CFString,
+                LSRolesMask.viewer
+               )?.takeRetainedValue() as String? {
+                if handler != Bundle.main.bundleIdentifier {
+                    unsetFormats.append(format.rawValue.uppercased())
+                }
+            } else {
+                unsetFormats.append(format.rawValue.uppercased())
+            }
+        }
+        return unsetFormats
+    }
+
+    private enum DefaultPlayerStatus {
+        case none           // Не установлен ни для одного формата
+        case partial        // Установлен для некоторых форматов
+        case complete       // Установлен для всех форматов
+    }
+
+    private func getDefaultPlayerStatus() -> DefaultPlayerStatus {
+        let unsetFormats = getUnsetFormats()
+        if unsetFormats.isEmpty {
+            return .complete
+        } else if unsetFormats.count == AudioFormat.allCases.count {
+            return .none
+        } else {
+            return .partial
+        }
     }
 
     var body: some View {
@@ -607,13 +716,96 @@ struct AboutView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
 
-            // Футер с чекбоксом
+            // Футер
             Divider()
                 .background(Color.retroText.opacity(0.2))
                 .padding(.horizontal, 20)
             
             HStack {
+                // Левая часть - статус форматов
+                HStack(spacing: 6) {
+                    switch getDefaultPlayerStatus() {
+                    case .none:
+                        // Чекбокс для установки всех форматов
+                        Button(action: {
+                            setAsDefaultPlayer()
+                        }) {
+                            HStack(spacing: 6) {
+                                ZStack {
+                                    if themeManager.isRetroMode {
+                                        Rectangle()
+                                            .stroke(Color.retroText.opacity(0.7), lineWidth: 1)
+                                            .frame(width: 14, height: 14)
+                                    } else {
+                                        RoundedRectangle(cornerRadius: 3)
+                                            .stroke(Color.retroText.opacity(0.7), lineWidth: 1)
+                                            .frame(width: 14, height: 14)
+                                    }
+                                }
+                                Text("Set as default player")
+                                    .font(.system(
+                                        size: 11,
+                                        design: themeManager.isRetroMode ? .monospaced : .default
+                                    ))
+                                    .foregroundColor(Color.retroText.opacity(0.7))
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        
+                    case .partial:
+                        // Желтый индикатор с кнопкой Fix
+                        HStack(spacing: 6) {
+                            Image(systemName: "exclamationmark.circle.fill")
+                                .font(.system(size: 11))
+                                .foregroundColor(.yellow)
+                            let unsetFormats = getUnsetFormats()
+                            Text("Not default for: \(unsetFormats.joined(separator: ", "))")
+                                .font(.system(
+                                    size: 11,
+                                    design: themeManager.isRetroMode ? .monospaced : .default
+                                ))
+                                .foregroundColor(Color.retroText.opacity(0.7))
+                            Button(action: {
+                                setAsDefaultPlayer()
+                            }) {
+                                Text("Fix")
+                                    .font(.system(
+                                        size: 11,
+                                        design: themeManager.isRetroMode ? .monospaced : .default
+                                    ))
+                                    .foregroundColor(.blue)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 2)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 3)
+                                            .stroke(Color.blue, lineWidth: 1)
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        
+                    case .complete:
+                        // Зеленый индикатор успеха
+                        HStack(spacing: 6) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 11))
+                                .foregroundColor(.green)
+                            Text("Default player for all formats")
+                                .font(.system(
+                                    size: 11,
+                                    design: themeManager.isRetroMode ? .monospaced : .default
+                                ))
+                                .foregroundColor(Color.retroText.opacity(0.7))
+                        }
+                    }
+                }
+                .animation(.easeInOut(duration: 0.2), value: getDefaultPlayerStatus())
+                .animation(.easeInOut(duration: 0.2), value: refreshTrigger)
+                .padding(.leading, 20)
+                
                 Spacer()
+                
+                // Правая часть - автообновления
                 Button(action: {
                     autoUpdateEnabled.toggle()
                     Settings.shared.autoUpdateEnabled = autoUpdateEnabled
@@ -625,7 +817,7 @@ struct AboutView: View {
                     }
                 }) {
                     HStack(spacing: 6) {
-                        // Стилизованный чекбокс
+                        // Стилизованный чекбокс автообновлений
                         ZStack {
                             if themeManager.isRetroMode {
                                 Rectangle()
@@ -660,8 +852,8 @@ struct AboutView: View {
                 }
                 .buttonStyle(.plain)
                 .padding(.trailing, 20)
-                .padding(.vertical, 6)
             }
+            .frame(height: 28)
         }
         .frame(minWidth: 600, idealWidth: 800, maxWidth: .infinity, minHeight: 120, idealHeight: 120, maxHeight: 120)
         .background(
@@ -670,6 +862,130 @@ struct AboutView: View {
                 blendingMode: .behindWindow
             )
         )
+        .onAppear {
+            // Проверяем статус при появлении окна
+            if !checkDefaultPlayerStatus() {
+                isDefaultPlayerSet = false
+                Settings.shared.isDefaultPlayerSet = false
+            }
+        }
+    }
+    
+    private func setAsDefaultPlayer() {
+        let workspace = NSWorkspace.shared
+        
+        print("\n=== MIMP Default Player Setup ===")
+        print("App Bundle ID: \(Bundle.main.bundleIdentifier ?? "Unknown")")
+        print("App URL: \(Bundle.main.bundleURL.path)")
+        
+        // Register for all audio files
+        if let audioType = UTType("public.audio") {
+            workspace.setDefaultApplication(
+                at: Bundle.main.bundleURL,
+                toOpen: audioType
+            )
+            print("✓ Registered for public.audio")
+        }
+        
+        // Force settings for problematic formats
+        let forceTypes = [
+            "aiff": [
+                "public.aiff-audio",
+                "public.aifc-audio",
+                "com.apple.coreaudio-format",
+                "public.audio",
+                "com.apple.quicktime-movie"
+            ],
+            "m4a": [
+                "public.mpeg-4-audio",
+                "com.apple.m4a-audio",
+                "public.audio",
+                "com.apple.quicktime-movie",
+                "public.mpeg-4"
+            ]
+        ]
+        
+        var successCount = 0
+        var failedFormats: [String] = []
+        
+        // Try to set for each format
+        for format in AudioFormat.allCases {
+            if let type = UTType(filenameExtension: format.rawValue) {
+                print("\nTrying to set default for .\(format.rawValue)")
+                
+                let currentHandler = LSCopyDefaultRoleHandlerForContentType(
+                    type.identifier as CFString,
+                    LSRolesMask.viewer
+                )?.takeRetainedValue() as String?
+                print("Current handler: \(currentHandler ?? "None")")
+                
+                var isSuccess = false
+                
+                if format.rawValue == "aiff" || format.rawValue == "m4a" {
+                    print("Forcing default app for .\(format.rawValue)")
+                    LSRegisterURL(Bundle.main.bundleURL as CFURL, true)
+                    
+                    if let types = forceTypes[format.rawValue] {
+                        for typeId in types {
+                            let status = LSSetDefaultRoleHandlerForContentType(
+                                typeId as CFString,
+                                LSRolesMask.all,
+                                Bundle.main.bundleIdentifier! as CFString
+                            )
+                            print("  Forced \(typeId): \(status == noErr ? "✓" : "✗")")
+                            
+                            if status != noErr, let forceType = UTType(typeId) {
+                                workspace.setDefaultApplication(
+                                    at: Bundle.main.bundleURL,
+                                    toOpen: forceType
+                                )
+                                print("  Tried NSWorkspace for \(typeId)")
+                            }
+                            
+                            if status == noErr {
+                                isSuccess = true
+                            }
+                        }
+                    }
+                } else {
+                    workspace.setDefaultApplication(
+                        at: Bundle.main.bundleURL,
+                        toOpen: type
+                    )
+                    isSuccess = true
+                }
+                
+                if let newHandler = LSCopyDefaultRoleHandlerForContentType(
+                    type.identifier as CFString,
+                    LSRolesMask.viewer
+                )?.takeRetainedValue() as String?,
+                   newHandler == Bundle.main.bundleIdentifier || isSuccess {
+                    successCount += 1
+                    print("✓ Successfully set as default")
+                    print("  New handler: \(newHandler)")
+                } else {
+                    failedFormats.append(format.rawValue)
+                    print("✗ Handler not set")
+                    print("  Current handler: \(currentHandler ?? "None")")
+                }
+            }
+        }
+        
+        print("\n=== Summary ===")
+        print("Total formats: \(AudioFormat.allCases.count)")
+        print("Successfully set: \(successCount)")
+        if !failedFormats.isEmpty {
+            print("Failed formats: \(failedFormats.joined(separator: ", "))")
+        }
+        print("===============================\n")
+        
+        if successCount == AudioFormat.allCases.count {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isDefaultPlayerSet = true
+                Settings.shared.isDefaultPlayerSet = true
+                refreshTrigger.toggle()
+            }
+        }
     }
 }
 
