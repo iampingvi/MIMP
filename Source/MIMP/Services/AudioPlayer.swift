@@ -4,7 +4,7 @@ import AppKit
 import MediaPlayer
 
 @MainActor
-final class AudioPlayer: ObservableObject {
+final class AudioPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
     static let shared = AudioPlayer()
 
     private var player: AVAudioPlayer?
@@ -38,11 +38,13 @@ final class AudioPlayer: ObservableObject {
 
     private var cleanupFlag = false
 
-    init() {
+    override init() {
         let settings = Settings.shared
         self.volume = settings.volume
         self.lastVolume = settings.lastVolume
         self.isMuted = settings.isMuted
+        
+        super.init()
         
         if self.isMuted {
             self.volume = 0
@@ -226,6 +228,7 @@ final class AudioPlayer: ObservableObject {
         let metadata = try await loadMetadata(from: asset)
         let artwork = try await loadArtwork(from: asset)
         let audioPlayer = try AVAudioPlayer(contentsOf: url)
+        audioPlayer.delegate = self  // Set the delegate
         audioPlayer.volume = volume
         audioPlayer.prepareToPlay()
 
@@ -270,7 +273,7 @@ final class AudioPlayer: ObservableObject {
                 let standardBitrates: [Int]
                 switch format.lowercased() {
                 case "flac", "wav":
-                    standardBitrates = [320, 470, 940, 1411, 2116, 2823, 3529, 4233]  // Добавляем битрейты для FLAC/WAV
+                    standardBitrates = [320, 470, 940, 1411, 2116, 2823, 3529, 4233]  // Добавляем битрейты дл FLAC/WAV
                 default:
                     standardBitrates = [32, 64, 96, 128, 160, 192, 224, 256, 320]  // Стандартные битрейты для MP3/AAC
                 }
@@ -469,7 +472,7 @@ final class AudioPlayer: ObservableObject {
         setVolume(newVolume)
     }
 
-    // Добавим новый вспомогательный метод для получения данных обложки
+    // Добавим новый вспомогательный метод для получения данных обложи
     private func loadArtworkData(from asset: AVURLAsset) async throws -> Data? {
         let metadata = try await asset.loadMetadata()
         
@@ -480,6 +483,19 @@ final class AudioPlayer: ObservableObject {
         }
         
         return nil
+    }
+
+    // Update the delegate method to be nonisolated
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        Task { @MainActor in
+            // Reset playback position to start
+            self.currentTime = 0
+            self.player?.currentTime = 0
+            // Stop playback
+            self.pause()
+            // Update Now Playing info
+            self.updateNowPlaying()
+        }
     }
 }
 

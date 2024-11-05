@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		78A721262CDAA9A600356E34 /* AudioKit in Frameworks */ = {isa = PBXBuildFile; productRef = 78A721252CDAA9A600356E34 /* AudioKit */; };
+		78A721292CDAA9B200356E34 /* AudioKitEX in Frameworks */ = {isa = PBXBuildFile; productRef = 78A721282CDAA9B200356E34 /* AudioKitEX */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		78CD9D072CD6765E005B614A /* MIMP.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MIMP.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +28,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				78A721262CDAA9A600356E34 /* AudioKit in Frameworks */,
+				78A721292CDAA9B200356E34 /* AudioKitEX in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +72,8 @@
 			);
 			name = MIMP;
 			packageProductDependencies = (
+				78A721252CDAA9A600356E34 /* AudioKit */,
+				78A721282CDAA9B200356E34 /* AudioKitEX */,
 			);
 			productName = MIMP;
 			productReference = 78CD9D072CD6765E005B614A /* MIMP.app */;
@@ -95,6 +104,8 @@
 			mainGroup = 78CD9CFE2CD6765E005B614A;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				78A721242CDAA9A600356E34 /* XCRemoteSwiftPackageReference "AudioKit" */,
+				78A721272CDAA9B200356E34 /* XCRemoteSwiftPackageReference "AudioKitEX" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 78CD9D082CD6765E005B614A /* Products */;
@@ -267,7 +278,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.5;
-				MARKETING_VERSION = 1.0.3;
+				MARKETING_VERSION = 1.0.2;
 				"OTHER_LDFLAGS[arch=*]" = "-lc++";
 				PRODUCT_BUNDLE_IDENTIFIER = com.pingvi.mimp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -300,7 +311,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.5;
-				MARKETING_VERSION = 1.0.3;
+				MARKETING_VERSION = 1.0.2;
 				"OTHER_LDFLAGS[arch=*]" = "-lc++";
 				PRODUCT_BUNDLE_IDENTIFIER = com.pingvi.mimp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -331,6 +342,38 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		78A721242CDAA9A600356E34 /* XCRemoteSwiftPackageReference "AudioKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/AudioKit/AudioKit.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.6.4;
+			};
+		};
+		78A721272CDAA9B200356E34 /* XCRemoteSwiftPackageReference "AudioKitEX" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/AudioKit/AudioKitEX.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.6.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		78A721252CDAA9A600356E34 /* AudioKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 78A721242CDAA9A600356E34 /* XCRemoteSwiftPackageReference "AudioKit" */;
+			productName = AudioKit;
+		};
+		78A721282CDAA9B200356E34 /* AudioKitEX */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 78A721272CDAA9B200356E34 /* XCRemoteSwiftPackageReference "AudioKitEX" */;
+			productName = AudioKitEX;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 78CD9CFF2CD6765E005B614A /* Project object */;
 }

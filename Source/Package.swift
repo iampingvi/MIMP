@@ -12,7 +12,7 @@ let package = Package(
             name: "MIMP",
             targets: ["MIMP"]),
     ],
-    dependencies: [],
+dependencies: [],
     targets: [
         .target(
             name: "MIMP",
