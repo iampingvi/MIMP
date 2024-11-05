@@ -111,18 +111,30 @@ struct UpdateView: View {
                                     updateManager.showingUpdate = false
                                 }
                             }) {
-                                Text("Skip")
-                                    .font(.system(
-                                        size: 11,
-                                        design: themeManager.isRetroMode ? .monospaced : .default
-                                    ))
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .fill(Color.white.opacity(0.2))
-                                    )
+                                if themeManager.isRetroMode {
+                                    Text("Skip")
+                                        .font(.system(
+                                            size: 11,
+                                            design: .monospaced
+                                        ))
+                                        .foregroundColor(Color.retroText)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(
+                                            Rectangle()
+                                                .stroke(Color.retroText.opacity(0.7), lineWidth: 1)
+                                        )
+                                } else {
+                                    Text("Skip")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 6)
+                                                .fill(Color.white.opacity(0.2))
+                                        )
+                                }
                             }
                             .buttonStyle(.plain)
                             
@@ -131,18 +143,30 @@ struct UpdateView: View {
                                     try? await updateManager.downloadAndInstallUpdate()
                                 }
                             }) {
-                                Text("Update")
-                                    .font(.system(
-                                        size: 11,
-                                        design: themeManager.isRetroMode ? .monospaced : .default
-                                    ))
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .fill(Color.blue)
-                                    )
+                                if themeManager.isRetroMode {
+                                    Text("Update")
+                                        .font(.system(
+                                            size: 11,
+                                            design: .monospaced
+                                        ))
+                                        .foregroundColor(Color.retroText)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(
+                                            Rectangle()
+                                                .stroke(Color.retroText.opacity(0.7), lineWidth: 1)
+                                        )
+                                } else {
+                                    Text("Update")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 6)
+                                                .fill(Color.blue)
+                                        )
+                                }
                             }
                             .buttonStyle(.plain)
                         }
