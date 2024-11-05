@@ -11,6 +11,7 @@ class Settings {
     private let isFirstLaunchKey = "app.isFirstLaunch"
     private let autoUpdateEnabledKey = "app.autoUpdateEnabled"
     private let defaultPlayerSetKey = "app.defaultPlayerSet"
+    private let launchedWithFileKey = "app.launchedWithFile"
     
     var volume: Float {
         get { Float(defaults.double(forKey: volumeKey)) }
@@ -47,6 +48,11 @@ class Settings {
         set { defaults.set(newValue, forKey: defaultPlayerSetKey) }
     }
     
+    var launchedWithFile: Bool {
+        get { defaults.bool(forKey: launchedWithFileKey) }
+        set { defaults.set(newValue, forKey: launchedWithFileKey) }
+    }
+    
     private init() {
         // Временно раскомментируйте эту строку для тестирования:
 //          defaults.removeObject(forKey: isFirstLaunchKey)
@@ -71,6 +77,9 @@ class Settings {
         }
         if defaults.object(forKey: defaultPlayerSetKey) == nil {
             defaults.set(false, forKey: defaultPlayerSetKey)
+        }
+        if defaults.object(forKey: launchedWithFileKey) == nil {
+            defaults.set(false, forKey: launchedWithFileKey)
         }
     }
 } 

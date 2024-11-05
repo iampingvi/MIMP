@@ -62,6 +62,8 @@ struct WaveformView: View {
                     }
                 }
             }
+            .opacity(waveformSamples.isEmpty ? 0 : 1)
+            .animation(.easeInOut(duration: 0.3), value: !waveformSamples.isEmpty)
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in

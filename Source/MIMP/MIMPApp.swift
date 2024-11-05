@@ -123,12 +123,27 @@ extension NSWindow {
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        // Check if app was launched with file
+        if let appleEvent = NSAppleEventManager.shared().currentAppleEvent,
+           appleEvent.eventClass == kCoreEventClass,
+           appleEvent.eventID == kAEOpenDocuments {
+            Settings.shared.launchedWithFile = true
+        } else {
+            // Only reset if it wasn't launched with file
+            Settings.shared.launchedWithFile = false
+        }
+    }
+    
     @MainActor
     func application(_ application: NSApplication, open urls: [URL]) {
         guard let url = urls.first,
               AudioFormat.allExtensions.contains(url.pathExtension.lowercased()) else {
             return
         }
+
+        // Set the flag when opening file
+        Settings.shared.launchedWithFile = true
 
         // Activate the existing window
         if let window = NSApp.windows.first {
@@ -137,6 +152,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         Task {
             try? await AudioPlayer.shared.load(url: url)
+        }
+    }
+    
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Keep the flag if it was set during launch
+        if !Settings.shared.launchedWithFile {
+            // Only reset if it wasn't launched with file
+            Settings.shared.launchedWithFile = false
         }
     }
 }

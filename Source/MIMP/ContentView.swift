@@ -73,7 +73,7 @@ struct ContentView: View {
                         NonDraggableView {
                             PlayerInterface(player: player, track: track)
                         }
-                    } else {
+                    } else if !Settings.shared.launchedWithFile && !player.isLoading {
                         DropZoneView(isDragging: $isDragging)
                     }
                 }
@@ -218,6 +218,13 @@ struct ContentView: View {
         .onDisappear {
             stopSeekTimer()
         }
+        .onAppear {
+            // If launched with file but no track is loaded yet,
+            // keep the launchedWithFile flag true
+            if Settings.shared.launchedWithFile && player.currentTrack == nil {
+                Settings.shared.launchedWithFile = true
+            }
+        }
     }
 
     private func handleDrop(_ providers: [NSItemProvider]) async {
@@ -307,9 +314,10 @@ struct PlayerInterface: View {
 
     var body: some View {
         VStack(spacing: 15) {
-            // Добавить после TrackInfoView и перед элементами управления
             if let audioInfo = player.audioInfo {
                 AudioInfoView(audioInfo: audioInfo)
+                    .opacity(player.isLoading ? 0 : 1)
+                    .animation(.easeInOut(duration: 0.3).delay(0.2), value: player.isLoading)
             }
             
             HStack(spacing: 15) {
@@ -349,6 +357,8 @@ struct PlayerInterface: View {
                         }
                     }
                 }
+                .opacity(player.isLoading ? 0 : 1)
+                .animation(.easeInOut(duration: 0.3), value: player.isLoading)
 
                 // Track info and waveform
                 VStack(alignment: .leading, spacing: 8) {
@@ -390,6 +400,8 @@ struct PlayerInterface: View {
                             .frame(width: 45, alignment: .leading)
                             .padding(.trailing, -20)
                     }
+                    .opacity(player.isLoading ? 0 : 1)
+                    .animation(.easeInOut(duration: 0.3).delay(0.1), value: player.isLoading)
                 }
             }
             .padding(.horizontal, 12)

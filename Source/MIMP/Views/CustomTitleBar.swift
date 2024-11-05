@@ -7,34 +7,69 @@ struct CustomTitleBar: View {
     let height: CGFloat = 28
     @StateObject private var themeManager = ThemeManager.shared
     @State private var autoUpdateEnabled = Settings.shared.autoUpdateEnabled
+    @State private var isInitialAppearance = true
     
     var body: some View {
         ZStack {
             // Фоновый слой с текстом по центру
             GeometryReader { geometry in
-                Text(titleText)
-                    .font(.system(
-                        size: 13,
-                        design: themeManager.isRetroMode ? .monospaced : .default
-                    ))
-                    .foregroundColor(Color.retroText)
-                    .lineLimit(1)
-                    .frame(width: geometry.size.width * 0.75, alignment: .center) // 70% ширины окна
-                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2) // Точно по центру
-                    .contentShape(Rectangle())
-                    .mask(
-                        LinearGradient(
-                            gradient: Gradient(colors: [.clear, .black, .black, .black, .clear]),
-                            startPoint: .leading,
-                            endPoint: .trailing
+                if let track = player.currentTrack {
+                    // Show track info
+                    Text(titleText)
+                        .font(.system(
+                            size: 13,
+                            design: themeManager.isRetroMode ? .monospaced : .default
+                        ))
+                        .foregroundColor(Color.retroText)
+                        .lineLimit(1)
+                        .frame(width: geometry.size.width * 0.75, alignment: .center)
+                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                        .contentShape(Rectangle())
+                        .mask(
+                            LinearGradient(
+                                gradient: Gradient(colors: [.clear, .black, .black, .black, .clear]),
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
                         )
-                    )
-                    .background(WindowDraggingView())
-                    .onTapGesture(count: 2) {
-                        if let window = NSApp.mainWindow {
-                            window.toggleExpand()
+                        .opacity(player.isLoading ? 0 : 1)
+                        .animation(.easeInOut(duration: 0.3), value: player.isLoading)
+                        .background(WindowDraggingView())
+                        .onTapGesture(count: 2) {
+                            if let window = NSApp.mainWindow {
+                                window.toggleExpand()
+                            }
                         }
-                    }
+                } else if !Settings.shared.launchedWithFile && !player.isLoading && !isInitialAppearance {
+                    // Show app name only in drag-n-drop view and not on initial appearance
+                    Text("Minimal Interface Music Player")
+                        .font(.system(
+                            size: 13,
+                            design: themeManager.isRetroMode ? .monospaced : .default
+                        ))
+                        .foregroundColor(Color.retroText)
+                        .lineLimit(1)
+                        .frame(width: geometry.size.width * 0.75, alignment: .center)
+                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                        .contentShape(Rectangle())
+                        .mask(
+                            LinearGradient(
+                                gradient: Gradient(colors: [.clear, .black, .black, .black, .clear]),
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .background(WindowDraggingView())
+                        .onTapGesture(count: 2) {
+                            if let window = NSApp.mainWindow {
+                                window.toggleExpand()
+                            }
+                        }
+                } else {
+                    // Empty title with dragging enabled
+                    WindowDraggingView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }
             
             // Передний слой с кнопками
@@ -86,6 +121,12 @@ struct CustomTitleBar: View {
             }
         }
         .frame(height: height)
+        .onAppear {
+            // Delay setting isInitialAppearance to false to avoid initial flash
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                isInitialAppearance = false
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
             autoUpdateEnabled = Settings.shared.autoUpdateEnabled
         }
@@ -98,7 +139,7 @@ struct CustomTitleBar: View {
             }
             return track.title
         }
-        return "Minimal Interface Music Player"
+        return ""  // Empty string by default
     }
 }
 

@@ -30,6 +30,8 @@ final class AudioPlayer: ObservableObject {
 
     @Published private(set) var audioInfo: AudioInfo?
 
+    @Published private(set) var isLoading: Bool = false
+
     private var timer: Timer?
     private var analysisTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
@@ -216,6 +218,9 @@ final class AudioPlayer: ObservableObject {
     }
 
     func load(url: URL) async throws {
+        isLoading = true
+        defer { isLoading = false }
+        
         // First, load all data
         let asset = AVURLAsset(url: url)
         let metadata = try await loadMetadata(from: asset)
@@ -229,17 +234,20 @@ final class AudioPlayer: ObservableObject {
         cleanupFlag = false
 
         self.player = audioPlayer
-        self.currentTrack = Track(
-            title: metadata.title ?? url.deletingPathExtension().lastPathComponent,
-            artist: metadata.artist ?? "Unknown Artist",
-            duration: audioPlayer.duration,
-            bpm: 0,
-            key: "-",
-            artwork: artwork,
-            fileURL: url,
-            waveformData: [],
-            tags: metadata.tags
-        )
+        
+        await MainActor.run {
+            self.currentTrack = Track(
+                title: metadata.title ?? url.deletingPathExtension().lastPathComponent,
+                artist: metadata.artist ?? "Unknown Artist",
+                duration: audioPlayer.duration,
+                bpm: 0,
+                key: "-",
+                artwork: artwork,
+                fileURL: url,
+                waveformData: [],
+                tags: metadata.tags
+            )
+        }
 
         // Start background analysis after setting the track
         startBackgroundAnalysis(url: url)
