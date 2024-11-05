@@ -441,6 +441,8 @@ struct VisualEffectView: NSViewRepresentable {
 struct AboutView: View {
     @Binding var showingAbout: Bool
     @StateObject private var themeManager = ThemeManager.shared
+    @State private var autoUpdateEnabled = Settings.shared.autoUpdateEnabled
+    @StateObject private var updateManager = UpdateManager.shared
 
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
@@ -601,11 +603,67 @@ struct AboutView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.trailing, 20)
             }
-            .frame(height: 100)
+            .frame(height: 85)
             .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.vertical, 6)
+
+            // Футер с чекбоксом
+            Divider()
+                .background(Color.retroText.opacity(0.2))
+                .padding(.horizontal, 20)
+            
+            HStack {
+                Spacer()
+                Button(action: {
+                    autoUpdateEnabled.toggle()
+                    Settings.shared.autoUpdateEnabled = autoUpdateEnabled
+                    
+                    if autoUpdateEnabled {
+                        Task {
+                            await updateManager.checkForUpdates(force: true)
+                        }
+                    }
+                }) {
+                    HStack(spacing: 6) {
+                        // Стилизованный чекбокс
+                        ZStack {
+                            if themeManager.isRetroMode {
+                                Rectangle()
+                                    .stroke(Color.retroText.opacity(0.7), lineWidth: 1)
+                                    .frame(width: 14, height: 14)
+                            } else {
+                                RoundedRectangle(cornerRadius: 3)
+                                    .stroke(Color.retroText.opacity(0.7), lineWidth: 1)
+                                    .frame(width: 14, height: 14)
+                            }
+                            
+                            if autoUpdateEnabled {
+                                if themeManager.isRetroMode {
+                                    Text("×")
+                                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                        .foregroundColor(Color.retroText)
+                                } else {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 9, weight: .bold))
+                                        .foregroundColor(Color.retroText)
+                                }
+                            }
+                        }
+                        
+                        Text("Check for updates automatically")
+                            .font(.system(
+                                size: 11,
+                                design: themeManager.isRetroMode ? .monospaced : .default
+                            ))
+                            .foregroundColor(Color.retroText.opacity(0.7))
+                    }
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 20)
+                .padding(.vertical, 6)
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(minWidth: 600, idealWidth: 800, maxWidth: .infinity, minHeight: 120, idealHeight: 120, maxHeight: 120)
         .background(
             VisualEffectView(
                 material: themeManager.isRetroMode ? .windowBackground : .hudWindow,

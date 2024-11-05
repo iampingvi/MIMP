@@ -9,6 +9,7 @@ class Settings {
     private let isMutedKey = "player.isMuted"
     private let showRemainingTimeKey = "player.showRemainingTime"
     private let isFirstLaunchKey = "app.isFirstLaunch"
+    private let autoUpdateEnabledKey = "app.autoUpdateEnabled"
     
     var volume: Float {
         get { Float(defaults.double(forKey: volumeKey)) }
@@ -35,6 +36,11 @@ class Settings {
         set { defaults.set(newValue, forKey: isFirstLaunchKey) }
     }
     
+    var autoUpdateEnabled: Bool {
+        get { defaults.bool(forKey: autoUpdateEnabledKey) }
+        set { defaults.set(newValue, forKey: autoUpdateEnabledKey) }
+    }
+    
     private init() {
         // Временно раскомментируйте эту строку для тестирования:
         //  defaults.removeObject(forKey: isFirstLaunchKey)
@@ -53,6 +59,9 @@ class Settings {
         }
         if defaults.object(forKey: showRemainingTimeKey) == nil {
             defaults.set(false, forKey: showRemainingTimeKey)
+        }
+        if defaults.object(forKey: autoUpdateEnabledKey) == nil {
+            defaults.set(true, forKey: autoUpdateEnabledKey)
         }
     }
 } 

@@ -5,7 +5,14 @@ import SwiftUI
 class UpdateManager: NSObject, ObservableObject {
     static let shared = UpdateManager()
     
-    @Published var isUpdateAvailable = false
+    @Published var isUpdateAvailable = false {
+        didSet {
+            // Показываем иконку обновления только если обновление доступно И включены автообновления
+            if !Settings.shared.autoUpdateEnabled {
+                isUpdateAvailable = false
+            }
+        }
+    }
     @Published var showingUpdate = false
     @Published var latestVersion: String?
     @Published var changelog: String?
@@ -23,7 +30,12 @@ class UpdateManager: NSObject, ObservableObject {
         }
     }
     
-    func checkForUpdates() async {
+    func checkForUpdates(force: Bool = false) async {
+        // Проверяем настройку автообновления только если это не принудительная проверка
+        if !force {
+            guard Settings.shared.autoUpdateEnabled else { return }
+        }
+        
         guard !isChecking else { return }
         isChecking = true
         
@@ -184,7 +196,7 @@ class UpdateManager: NSObject, ObservableObject {
                 try fileManager.removeItem(at: backupURL)
             }
             
-            // Преи��еновываем текущую версию в .old
+            // Преиеновываем текущую версию �� .old
             try fileManager.moveItem(at: oldAppURL, to: backupURL)
             
             // Копируем новую версию на место старой

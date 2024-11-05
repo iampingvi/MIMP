@@ -6,6 +6,7 @@ struct CustomTitleBar: View {
     @Binding var showingAbout: Bool
     let height: CGFloat = 28
     @StateObject private var themeManager = ThemeManager.shared
+    @State private var autoUpdateEnabled = Settings.shared.autoUpdateEnabled
     
     var body: some View {
         HStack(spacing: 0) {
@@ -34,7 +35,7 @@ struct CustomTitleBar: View {
                 }
                 
                 // Кнопка обновления
-                if updateManager.isUpdateAvailable {
+                if updateManager.isUpdateAvailable && autoUpdateEnabled {
                     WindowButton(
                         color: .blue,
                         symbol: "arrow.triangle.2.circlepath",
@@ -78,6 +79,9 @@ struct CustomTitleBar: View {
                 .padding(.trailing, 8)
         }
         .frame(height: height)
+        .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
+            autoUpdateEnabled = Settings.shared.autoUpdateEnabled
+        }
     }
     
     private var titleText: String {

@@ -71,7 +71,7 @@ struct MIMPApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
-        .defaultSize(width: 800, height: 128)
+        .defaultSize(width: 800, height: 120)
         .defaultPosition(.center)
         .commands {
             // Disable all standard menus
