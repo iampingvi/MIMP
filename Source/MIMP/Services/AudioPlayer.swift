@@ -38,9 +38,13 @@ final class AudioPlayer: ObservableObject {
 
     init() {
         let settings = Settings.shared
-        self.isMuted = settings.isMuted
+        self.volume = settings.volume
         self.lastVolume = settings.lastVolume
-        self.volume = settings.isMuted ? 0 : settings.volume
+        self.isMuted = settings.isMuted
+        
+        if self.isMuted {
+            self.volume = 0
+        }
 
         setupAudioSession()
         setupRemoteCommandCenter()
@@ -408,17 +412,18 @@ final class AudioPlayer: ObservableObject {
 
     func toggleMute() {
         if isMuted {
-            // Restore previous volume
-            volume = lastVolume
             isMuted = false
+            Settings.shared.isMuted = false
+            volume = lastVolume
+            Settings.shared.volume = lastVolume
         } else {
-            // Save current volume and set to 0
             lastVolume = volume
             Settings.shared.lastVolume = lastVolume
-            volume = 0
             isMuted = true
+            Settings.shared.isMuted = true
+            volume = 0
+            Settings.shared.volume = volume
         }
-        Settings.shared.isMuted = isMuted
         player?.volume = volume
     }
 
@@ -427,17 +432,19 @@ final class AudioPlayer: ObservableObject {
         volume = normalizedVolume
         player?.volume = normalizedVolume
 
-        if normalizedVolume > 0 {
+        if normalizedVolume > 0 && isMuted {
             isMuted = false
             Settings.shared.isMuted = false
             lastVolume = normalizedVolume
             Settings.shared.lastVolume = lastVolume
-            Settings.shared.volume = normalizedVolume
         } else if normalizedVolume == 0 && !isMuted {
             isMuted = true
             Settings.shared.isMuted = true
-            Settings.shared.volume = 0
+            lastVolume = max(0.1, volume)
+            Settings.shared.lastVolume = lastVolume
         }
+        
+        Settings.shared.volume = normalizedVolume
     }
 
     // Add new methods for seeking and volume control with steps
