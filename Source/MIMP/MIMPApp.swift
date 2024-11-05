@@ -73,19 +73,7 @@ struct MIMPApp: App {
         .windowResizability(.contentSize)
         .defaultSize(width: 800, height: 120)
         .defaultPosition(.center)
-        .commands {
-            // Disable all standard menus
-            CommandGroup(replacing: .newItem) { }
-            CommandGroup(replacing: .saveItem) { }
-            CommandGroup(replacing: .undoRedo) { }
-            CommandGroup(replacing: .pasteboard) { }
-            CommandGroup(replacing: .textEditing) { }
-            CommandGroup(replacing: .windowList) { }
-            CommandGroup(replacing: .windowSize) { }
-            CommandGroup(replacing: .toolbar) { }
-            CommandGroup(replacing: .help) { }
-            CommandGroup(replacing: .appInfo) { }
-        }
+        .commandsRemoved()
     }
 }
 

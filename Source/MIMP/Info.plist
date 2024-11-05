@@ -26,9 +26,9 @@
             <key>CFBundleTypeRole</key>
             <string>Editor</string>
             <key>LSHandlerRank</key>
-            <string>Owner</string>
-            <key>LSIsAppleDefaultForType</key>
-            <true/>
+            <string>Alternate</string>
+            <key>LSTypeIsPackage</key>
+            <false/>
         </dict>
         <dict>
             <key>CFBundleTypeExtensions</key>
@@ -44,11 +44,11 @@
             <key>CFBundleTypeName</key>
             <string>WAV Audio</string>
             <key>CFBundleTypeRole</key>
-            <string>Viewer</string>
+            <string>Editor</string>
             <key>LSHandlerRank</key>
-            <string>Owner</string>
-            <key>LSIsAppleDefaultForType</key>
-            <true/>
+            <string>Alternate</string>
+            <key>LSTypeIsPackage</key>
+            <false/>
         </dict>
         <dict>
             <key>CFBundleTypeExtensions</key>
@@ -66,17 +66,9 @@
             <key>CFBundleTypeRole</key>
             <string>Editor</string>
             <key>LSHandlerRank</key>
-            <string>Owner</string>
-            <key>LSIsAppleDefaultForType</key>
-            <true/>
-            <key>LSItemContentTypes</key>
-            <array>
-                <string>public.aiff-audio</string>
-                <string>public.aifc-audio</string>
-                <string>com.apple.coreaudio-format</string>
-                <string>public.audio</string>
-                <string>com.apple.quicktime-movie</string>
-            </array>
+            <string>Alternate</string>
+            <key>LSTypeIsPackage</key>
+            <false/>
         </dict>
         <dict>
             <key>CFBundleTypeExtensions</key>
@@ -93,17 +85,9 @@
             <key>CFBundleTypeRole</key>
             <string>Editor</string>
             <key>LSHandlerRank</key>
-            <string>Owner</string>
-            <key>LSIsAppleDefaultForType</key>
-            <true/>
-            <key>LSItemContentTypes</key>
-            <array>
-                <string>public.aiff-audio</string>
-                <string>public.aifc-audio</string>
-                <string>com.apple.coreaudio-format</string>
-                <string>public.audio</string>
-                <string>com.apple.quicktime-movie</string>
-            </array>
+            <string>Alternate</string>
+            <key>LSTypeIsPackage</key>
+            <false/>
         </dict>
         <dict>
             <key>CFBundleTypeExtensions</key>
@@ -120,9 +104,9 @@
             <key>CFBundleTypeRole</key>
             <string>Editor</string>
             <key>LSHandlerRank</key>
-            <string>Owner</string>
-            <key>LSIsAppleDefaultForType</key>
-            <true/>
+            <string>Alternate</string>
+            <key>LSTypeIsPackage</key>
+            <false/>
         </dict>
     </array>
     <key>CFBundleTypeRole</key>
