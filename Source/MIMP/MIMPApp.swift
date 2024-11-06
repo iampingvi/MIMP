@@ -24,7 +24,7 @@ struct MIMPApp: App {
                         window.titlebarAppearsTransparent = true
                         window.isMovableByWindowBackground = true
                         window.backgroundColor = .clear
-                        window.hasShadow = true
+                        window.hasShadow = false
 
                         // Configure window corner radius
                         window.contentView?.wantsLayer = true
