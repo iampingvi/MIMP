@@ -392,7 +392,7 @@ struct PlayerInterface: View {
     var body: some View {
         VStack(spacing: 15) {
             if let audioInfo = player.audioInfo {
-                AudioInfoView(audioInfo: audioInfo)
+                audioInfo.view()
                     .opacity(player.isLoading ? 0 : 1)
                     .animation(.easeInOut(duration: 0.3).delay(0.2), value: player.isLoading)
             }

@@ -316,7 +316,7 @@ final class AudioPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
         )
     }
 
-    private func loadMetadata(from asset: AVURLAsset) async throws -> AudioMetadata {
+    private func loadMetadata(from asset: AVURLAsset) async throws -> (title: String?, artist: String?, tags: [String]) {
         let commonMetadata = try await asset.loadMetadata()
         var title: String?
         var artist: String?
@@ -337,7 +337,7 @@ final class AudioPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
             }
         }
 
-        return AudioMetadata(title: title, artist: artist, artwork: nil, tags: tags)
+        return (title, artist, tags)
     }
 
     private func loadArtwork(from asset: AVURLAsset) async throws -> URL? {
@@ -496,13 +496,6 @@ final class AudioPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
             self.updateNowPlaying()
         }
     }
-}
-
-struct AudioMetadata: Sendable {
-    let title: String?
-    let artist: String?
-    let artwork: URL?
-    let tags: [String]
 }
 
 enum AudioPlayerError: Error {
