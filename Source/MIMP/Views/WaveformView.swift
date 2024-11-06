@@ -13,6 +13,8 @@ struct WaveformView: View {
     
     @StateObject private var themeManager = ThemeManager.shared
     
+    @State private var animatedProgress: CGFloat = 0
+    
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
@@ -23,46 +25,77 @@ struct WaveformView: View {
                         let height = size.height
                         let middle = height / 2
                         let pointSpacing = width / CGFloat(waveformSamples.count)
-                        let progressWidth = width * CGFloat(currentTime / duration)
-                        let barWidth = max(1.5, pointSpacing - 1) // Немного тоньше бары
-                        let barSpacing = max(0.5, (pointSpacing - barWidth) / 2) // Добавляем отступ между барами
-                        let maxAmplitude = height / 2.2 // Уменьшаем максимальную амплитуду
+                        let progressWidth = width * animatedProgress
+                        let barWidth = max(1.5, pointSpacing - 1)
+                        let barSpacing = max(0.5, (pointSpacing - barWidth) / 2)
+                        let maxAmplitude = height / 2.2
                         
                         for (index, sample) in waveformSamples.enumerated() {
                             let x = CGFloat(index) * pointSpacing + barSpacing
                             
-                            // Делаем амплитуду нелинейной для более динамичного отображения
-                            let normalizedSample = pow(CGFloat(sample), 0.8) // Степень 0.8 для более плавного распределения
+                            let normalizedSample = pow(CGFloat(sample), 0.8)
                             let amplitude = normalizedSample * maxAmplitude
                             
-                            // Делаем нижнюю часть чуть меньше верхней
                             let topAmplitude = amplitude
-                            let bottomAmplitude = amplitude * 0.85 // Нижняя часть на 15% меньше
+                            let bottomAmplitude = amplitude * 0.85
                             
-                            var path = Path()
-                            // Верхний бар
-                            path.addRect(CGRect(
+                            // Calculate the progress for this specific bar
+                            let barStartX = x
+                            let barEndX = x + barWidth
+                            let barCenterX = barStartX + (barWidth / 2)
+                            
+                            // Calculate how much of this bar should be filled
+                            let fillProgress: CGFloat
+                            if barEndX <= progressWidth {
+                                fillProgress = 1.0 // Fully filled
+                            } else if barStartX >= progressWidth {
+                                fillProgress = 0.0 // Not filled
+                            } else {
+                                // Partially filled - calculate exact percentage
+                                fillProgress = (progressWidth - barStartX) / barWidth
+                            }
+                            
+                            // Draw background (unfilled) part
+                            var backgroundPath = Path()
+                            backgroundPath.addRect(CGRect(
                                 x: x,
                                 y: middle - topAmplitude,
                                 width: barWidth,
                                 height: topAmplitude
                             ))
-                            // Нижний бар (немного меньше)
-                            path.addRect(CGRect(
+                            backgroundPath.addRect(CGRect(
                                 x: x,
                                 y: middle,
                                 width: barWidth,
                                 height: bottomAmplitude
                             ))
                             
-                            let color = x <= progressWidth ? 
-                                (themeManager.isRetroMode ? 
+                            let backgroundColor = themeManager.isRetroMode ? 
+                                Color.green.opacity(0.3 + Double(sample) * 0.4) :
+                                Color.white.opacity(0.3 + Double(sample) * 0.4)
+                            context.fill(backgroundPath, with: .color(backgroundColor))
+                            
+                            // Draw filled part
+                            if fillProgress > 0 {
+                                var filledPath = Path()
+                                filledPath.addRect(CGRect(
+                                    x: x,
+                                    y: middle - topAmplitude,
+                                    width: barWidth * fillProgress,
+                                    height: topAmplitude
+                                ))
+                                filledPath.addRect(CGRect(
+                                    x: x,
+                                    y: middle,
+                                    width: barWidth * fillProgress,
+                                    height: bottomAmplitude
+                                ))
+                                
+                                let filledColor = themeManager.isRetroMode ? 
                                     Color.green.opacity(0.6 + Double(sample) * 0.4) :
-                                    Color.accentColor.opacity(0.6 + Double(sample) * 0.4)) :
-                                (themeManager.isRetroMode ? 
-                                    Color.green.opacity(0.3 + Double(sample) * 0.4) :
-                                    Color.white.opacity(0.3 + Double(sample) * 0.4))
-                            context.fill(path, with: .color(color))
+                                    Color.accentColor.opacity(0.6 + Double(sample) * 0.4)
+                                context.fill(filledPath, with: .color(filledColor))
+                            }
                         }
                     }
                     
@@ -96,7 +129,13 @@ struct WaveformView: View {
                         }
                     }
             )
+            .onChange(of: currentTime) { newTime in
+                withAnimation(.linear(duration: 0.1)) {
+                    animatedProgress = CGFloat(newTime / duration)
+                }
+            }
             .onAppear {
+                animatedProgress = CGFloat(currentTime / duration)
                 loadWaveform()
             }
         }
