@@ -50,8 +50,30 @@ struct ContentView: View {
                                         )
                                         .blendMode(.destinationOut)
                                     )
-                            default:
-                                Color.clear
+                            case .empty, .failure:
+                                // Default macOS-style music icon
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(Color.gray.opacity(0.2))
+                                        .frame(width: 128, height: 128)
+                                    Image(systemName: "music.note")
+                                        .font(.system(size: 40))
+                                        .foregroundColor(.gray)
+                                }
+                                .overlay(Color.black.opacity(0.5))
+                                .overlay(
+                                    LinearGradient(
+                                        gradient: Gradient(stops: [
+                                            .init(color: Color.black.opacity(1), location: 0),
+                                            .init(color: Color.black.opacity(0), location: 1)
+                                        ]),
+                                        startPoint: .trailing,
+                                        endPoint: .leading
+                                    )
+                                    .blendMode(.destinationOut)
+                                )
+                            @unknown default:
+                                EmptyView()
                             }
                         }
                     }
@@ -485,12 +507,14 @@ struct CoverArtView: View {
                     .resizable()
                     .aspectRatio(contentMode: .fill)
             } placeholder: {
-                Color.clear
-                    .overlay {
-                        Image(systemName: "music.note")
-                            .font(.system(size: 20))
-                            .foregroundColor(.secondary)
-                    }
+                // Default macOS-style music icon
+                ZStack {
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.gray.opacity(0.2))
+                    Image(systemName: "music.note")
+                        .font(.system(size: 30))
+                        .foregroundColor(.gray)
+                }
             }
 
             if showPlayIcon || !isPlaying {
@@ -851,7 +875,7 @@ struct AboutView: View {
                                           Color.retroText.opacity(0.7), 
                                           location: 0.5),
                                     .init(color: isHeartHovered ? 
-                                          Color(red: 255/255, green: 215/255, blue: 0/255) : // Желтый
+                                          Color(red: 255/255, green: 215/255, blue: 0/255) : // Желты��
                                           Color.retroText.opacity(0.7), 
                                           location: 0.5),
                                     .init(color: isHeartHovered ? 
