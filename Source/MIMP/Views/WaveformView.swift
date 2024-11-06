@@ -24,17 +24,36 @@ struct WaveformView: View {
                         let middle = height / 2
                         let pointSpacing = width / CGFloat(waveformSamples.count)
                         let progressWidth = width * CGFloat(currentTime / duration)
+                        let barWidth = max(1.5, pointSpacing - 1) // Немного тоньше бары
+                        let barSpacing = max(0.5, (pointSpacing - barWidth) / 2) // Добавляем отступ между барами
+                        let maxAmplitude = height / 2.2 // Уменьшаем максимальную амплитуду
                         
                         for (index, sample) in waveformSamples.enumerated() {
-                            let x = CGFloat(index) * pointSpacing
-                            let amplitude = CGFloat(sample) * (height / 2)
+                            let x = CGFloat(index) * pointSpacing + barSpacing
                             
-                            let topY = middle - amplitude
-                            let bottomY = middle + amplitude
+                            // Делаем амплитуду нелинейной для более динамичного отображения
+                            let normalizedSample = pow(CGFloat(sample), 0.8) // Степень 0.8 для более плавного распределения
+                            let amplitude = normalizedSample * maxAmplitude
+                            
+                            // Делаем нижнюю часть чуть меньше верхней
+                            let topAmplitude = amplitude
+                            let bottomAmplitude = amplitude * 0.85 // Нижняя часть на 15% меньше
                             
                             var path = Path()
-                            path.move(to: CGPoint(x: x, y: topY))
-                            path.addLine(to: CGPoint(x: x, y: bottomY))
+                            // Верхний бар
+                            path.addRect(CGRect(
+                                x: x,
+                                y: middle - topAmplitude,
+                                width: barWidth,
+                                height: topAmplitude
+                            ))
+                            // Нижний бар (немного меньше)
+                            path.addRect(CGRect(
+                                x: x,
+                                y: middle,
+                                width: barWidth,
+                                height: bottomAmplitude
+                            ))
                             
                             let color = x <= progressWidth ? 
                                 (themeManager.isRetroMode ? 
@@ -43,7 +62,7 @@ struct WaveformView: View {
                                 (themeManager.isRetroMode ? 
                                     Color.green.opacity(0.3 + Double(sample) * 0.4) :
                                     Color.white.opacity(0.3 + Double(sample) * 0.4))
-                            context.stroke(path, with: .color(color), lineWidth: 2)
+                            context.fill(path, with: .color(color))
                         }
                     }
                     
