@@ -65,7 +65,7 @@ struct MIMPApp: App {
 
                         // Activate the window to display in cmd+tab without changing the appearance
                         NSApp.setActivationPolicy(.regular)
-                        window.level = .normal
+                        window.level = Settings.shared.isWindowPinned ? .floating : .normal
                     }
                 }
         }

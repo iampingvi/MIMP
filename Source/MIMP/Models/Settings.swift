@@ -12,6 +12,7 @@ class Settings {
     private let autoUpdateEnabledKey = "app.autoUpdateEnabled"
     private let defaultPlayerSetKey = "app.defaultPlayerSet"
     private let launchedWithFileKey = "app.launchedWithFile"
+    private let isWindowPinnedKey = "window.isPinned"
     
     var volume: Float {
         get { Float(defaults.double(forKey: volumeKey)) }
@@ -53,6 +54,11 @@ class Settings {
         set { defaults.set(newValue, forKey: launchedWithFileKey) }
     }
     
+    var isWindowPinned: Bool {
+        get { defaults.bool(forKey: isWindowPinnedKey) }
+        set { defaults.set(newValue, forKey: isWindowPinnedKey) }
+    }
+    
     private init() {
         // Временно раскомментируйте эту строку для тестирования:
 //          defaults.removeObject(forKey: isFirstLaunchKey)
@@ -80,6 +86,9 @@ class Settings {
         }
         if defaults.object(forKey: launchedWithFileKey) == nil {
             defaults.set(false, forKey: launchedWithFileKey)
+        }
+        if defaults.object(forKey: isWindowPinnedKey) == nil {
+            defaults.set(false, forKey: isWindowPinnedKey)
         }
     }
 } 

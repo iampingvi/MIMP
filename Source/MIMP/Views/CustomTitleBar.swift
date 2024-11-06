@@ -8,6 +8,7 @@ struct CustomTitleBar: View {
     @StateObject private var themeManager = ThemeManager.shared
     @State private var autoUpdateEnabled = Settings.shared.autoUpdateEnabled
     @State private var isInitialAppearance = true
+    @State private var isWindowPinned = Settings.shared.isWindowPinned
     
     var body: some View {
         ZStack {
@@ -23,7 +24,7 @@ struct CustomTitleBar: View {
                         .foregroundColor(Color.retroText)
                         .opacity(0.7)
                         .lineLimit(1)
-                        .frame(width: geometry.size.width * 0.75, alignment: .center)
+                        .frame(width: geometry.size.width * 0.7, alignment: .center)
                         .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
                         .contentShape(Rectangle())
                         .mask(
@@ -82,7 +83,8 @@ struct CustomTitleBar: View {
                     WindowButton(
                         color: themeManager.isRetroMode ? .green : .red,
                         symbol: "xmark",
-                        isRetroStyle: themeManager.isRetroMode
+                        isRetroStyle: themeManager.isRetroMode,
+                        isPinButton: false
                     )
                     .help("Close")
                     .onTapGesture {
@@ -93,7 +95,8 @@ struct CustomTitleBar: View {
                     WindowButton(
                         color: .gray, 
                         symbol: "info.circle",
-                        isRetroStyle: themeManager.isRetroMode
+                        isRetroStyle: themeManager.isRetroMode,
+                        isPinButton: false
                     )
                     .help("About")
                     .onTapGesture {
@@ -105,7 +108,8 @@ struct CustomTitleBar: View {
                         WindowButton(
                             color: .blue,
                             symbol: "arrow.triangle.2.circlepath",
-                            isRetroStyle: themeManager.isRetroMode
+                            isRetroStyle: themeManager.isRetroMode,
+                            isPinButton: false
                         )
                         .help("Update Available")
                         .onTapGesture {
@@ -117,10 +121,31 @@ struct CustomTitleBar: View {
                 
                 Spacer()
                 
-                // Правая часть с регулятором громкости
-                VolumeControl(player: player)
-                    .padding(.trailing, 8)
-                    .id("volumeControl")
+                // Правая часть с регулятором громкости и кнопкой закрепления окна
+                HStack(spacing: 4) {
+                    // Кнопка закрепления окна
+                    WindowButton(
+                        color: isWindowPinned ? 
+                            (themeManager.isRetroMode ? Color.retroText : .blue) : 
+                            Color.retroText.opacity(0.5),
+                        symbol: isWindowPinned ? "pin.fill" : "pin",
+                        isRetroStyle: themeManager.isRetroMode,
+                        isPinButton: true
+                    )
+                    .help(isWindowPinned ? "Unpin Window" : "Pin Window")
+                    .onTapGesture {
+                        isWindowPinned.toggle()
+                        Settings.shared.isWindowPinned = isWindowPinned
+                        if let window = NSApp.mainWindow {
+                            window.level = isWindowPinned ? .floating : .normal
+                        }
+                    }
+                    
+                    // Регулятор громкости
+                    VolumeControl(player: player)
+                }
+                .padding(.trailing, 8)
+                .id("volumeControl")
             }
         }
         .frame(height: height)
@@ -128,6 +153,11 @@ struct CustomTitleBar: View {
             // Delay setting isInitialAppearance to false to avoid initial flash
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 isInitialAppearance = false
+            }
+            
+            // Set initial window level based on saved setting
+            if let window = NSApp.mainWindow {
+                window.level = isWindowPinned ? .floating : .normal
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
@@ -152,25 +182,34 @@ struct WindowButton: View {
     let symbol: String
     @State private var isHovered = false
     let isRetroStyle: Bool
+    let isPinButton: Bool
     
     var body: some View {
         ZStack {
-            if isRetroStyle {
-                Rectangle()
-                    .stroke(Color.retroText, lineWidth: 1)
-                    .frame(width: 12, height: 12)
-            } else {
-                Circle()
-                    .fill(color.opacity(isHovered ? 1.0 : 0.8))
-                    .frame(width: 12, height: 12)
+            // Показываем фон только если это не кнопка булавки
+            if !isPinButton {
+                if isRetroStyle {
+                    Rectangle()
+                        .stroke(Color.retroText, lineWidth: 1)
+                        .frame(width: 12, height: 12)
+                } else {
+                    Circle()
+                        .fill(color.opacity(isHovered ? 1.0 : 0.8))
+                        .frame(width: 12, height: 12)
+                }
             }
             
-            if isHovered || isRetroStyle {
+            // Показываем иконку только при наведении или если это булавка
+            if isHovered || symbol.contains("pin") {
                 Image(systemName: symbol)
                     .font(.system(size: 8, weight: .bold))
-                    .foregroundColor(isRetroStyle ? Color.retroText : Color.black.opacity(0.8))
+                    .foregroundColor(isPinButton ? color : (isRetroStyle ? Color.retroText : Color.black.opacity(0.8)))
+                    // Наклоняем и отзеркаливаем иконку булавки, если это булавка
+                    .rotationEffect(symbol.contains("pin") ? .degrees(-45) : .degrees(0))
+                    .scaleEffect(x: symbol.contains("pin") ? -1 : 1, y: 1)
             }
         }
+        .frame(width: 12, height: 12) // Фиксированный размер для всех кнопок
         .onHover { hover in
             withAnimation(.easeInOut(duration: 0.1)) {
                 isHovered = hover
