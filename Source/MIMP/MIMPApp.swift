@@ -25,46 +25,53 @@ struct MIMPApp: App {
                         window.isMovableByWindowBackground = true
                         window.backgroundColor = .clear
                         window.hasShadow = false
-
-                        // Configure window corner radius
-                        window.contentView?.wantsLayer = true
-                        window.contentView?.layer?.cornerRadius = 10
-                        window.contentView?.layer?.masksToBounds = true
-
-                        // Hide all standard window buttons
-                        window.standardWindowButton(.closeButton)?.isHidden = true
-                        window.standardWindowButton(.miniaturizeButton)?.isHidden = true
-                        window.standardWindowButton(.zoomButton)?.isHidden = true
-
-                        // Disable focus highlighting
+                        
+                        // Configure visual effect view
                         if let visualEffect = window.contentView?.superview as? NSVisualEffectView {
                             visualEffect.wantsLayer = true
-                            visualEffect.layer?.cornerRadius = 10
-                            visualEffect.layer?.masksToBounds = true
+                            
+                            // Создаем background view для тени
+                            let backgroundView = NSView(frame: visualEffect.bounds)
+                            backgroundView.wantsLayer = true
+                            backgroundView.layer?.backgroundColor = NSColor.clear.cgColor
+                            backgroundView.layer?.cornerRadius = 10
+                            backgroundView.layer?.shadowColor = NSColor.black.cgColor
+                            backgroundView.layer?.shadowOpacity = 0.2
+                            backgroundView.layer?.shadowOffset = CGSize(width: 0, height: -2)
+                            backgroundView.layer?.shadowRadius = 12
+                            backgroundView.layer?.masksToBounds = false
+                            
+                            // Добавляем background view под visualEffect
+                            if let superView = visualEffect.superview {
+                                superView.addSubview(backgroundView, positioned: .below, relativeTo: visualEffect)
+                                
+                                // Обновляем frame при изменении размера окна
+                                NotificationCenter.default.addObserver(forName: NSView.frameDidChangeNotification, object: visualEffect, queue: .main) { _ in
+                                    backgroundView.frame = visualEffect.frame
+                                }
+                            }
+                            
+                            // Настраиваем visualEffect
                             visualEffect.material = .windowBackground
                             visualEffect.state = .active
                             visualEffect.isEmphasized = false
-                        }
-
-                        // Add double-click handler for the title bar
-                        if let titlebarView = window.standardWindowButton(.closeButton)?.superview?.superview {
-                            let clickGesture = NSClickGestureRecognizer(target: window, action: #selector(NSWindow.toggleExpand))
-                            clickGesture.numberOfClicksRequired = 2
-                            titlebarView.addGestureRecognizer(clickGesture)
-                        }
-
-                        // Force refresh the appearance
-                        window.setFrame(window.frame, display: true)
-
-                        // Additional settings to remove the border
-                        if let visualEffect = window.contentView?.superview as? NSVisualEffectView {
-                            visualEffect.wantsLayer = true
                             visualEffect.layer?.cornerRadius = 10
                             visualEffect.layer?.masksToBounds = true
                         }
 
-                        // Activate the window to display in cmd+tab without changing the appearance
-                        NSApp.setActivationPolicy(.regular)
+                        // Configure content view
+                        if let contentView = window.contentView {
+                            contentView.wantsLayer = true
+                            contentView.layer?.cornerRadius = 10
+                            contentView.layer?.masksToBounds = true
+                        }
+
+                        // Hide standard window buttons
+                        window.standardWindowButton(.closeButton)?.isHidden = true
+                        window.standardWindowButton(.miniaturizeButton)?.isHidden = true
+                        window.standardWindowButton(.zoomButton)?.isHidden = true
+                        
+                        // Set window level based on settings
                         window.level = Settings.shared.isWindowPinned ? .floating : .normal
                     }
                 }
