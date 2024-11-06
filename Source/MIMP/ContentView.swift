@@ -875,7 +875,7 @@ struct AboutView: View {
                                           Color.retroText.opacity(0.7), 
                                           location: 0.5),
                                     .init(color: isHeartHovered ? 
-                                          Color(red: 255/255, green: 215/255, blue: 0/255) : // Желты��
+                                          Color(red: 255/255, green: 215/255, blue: 0/255) : // Желтый
                                           Color.retroText.opacity(0.7), 
                                           location: 0.5),
                                     .init(color: isHeartHovered ? 

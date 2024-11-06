@@ -17,7 +17,7 @@ struct MIMPApp: App {
                 .preferredColorScheme(.dark)
                 .environmentObject(player)
                 .handlesExternalEvents(preferring: Set(["*"]), allowing: Set(["*"]))
-                .task {
+                .task { @MainActor in
                     if let window = NSApp.windows.first {
                         // Configure window styles
                         window.styleMask = [.borderless, .fullSizeContentView]
@@ -46,8 +46,16 @@ struct MIMPApp: App {
                                 superView.addSubview(backgroundView, positioned: .below, relativeTo: visualEffect)
                                 
                                 // Обновляем frame при изменении размера окна
-                                NotificationCenter.default.addObserver(forName: NSView.frameDidChangeNotification, object: visualEffect, queue: .main) { _ in
-                                    backgroundView.frame = visualEffect.frame
+                                NotificationCenter.default.addObserver(
+                                    forName: NSView.frameDidChangeNotification,
+                                    object: visualEffect,
+                                    queue: .main
+                                ) { [weak backgroundView, weak visualEffect] notification in
+                                    Task { @MainActor in
+                                        guard let backgroundView = backgroundView,
+                                              let visualEffect = visualEffect else { return }
+                                        backgroundView.frame = visualEffect.frame
+                                    }
                                 }
                             }
                             

@@ -244,7 +244,6 @@ struct WaveformView: View {
     
     // В ZStack добавим функцию для получения амплитуды в текущей позиции
     func getAmplitudeAtPosition(_ position: CGFloat, size: CGSize) -> (top: CGFloat, bottom: CGFloat) {
-        let pointSpacing = size.width / CGFloat(waveformSamples.count)
         let index = Int((position / size.width) * CGFloat(waveformSamples.count))
         
         guard index >= 0 && index < waveformSamples.count else {
