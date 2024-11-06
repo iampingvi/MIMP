@@ -18,6 +18,24 @@ struct MIMPApp: App {
                 .environmentObject(player)
                 .handlesExternalEvents(preferring: Set(["*"]), allowing: Set(["*"]))
                 .task { @MainActor in
+                    // Restore playback state after update
+                    if Settings.shared.wasUpdated,
+                       let lastTrackURL = Settings.shared.lastTrackURL {
+                        let wasPlaying = Settings.shared.lastTrackWasPlaying
+                        let position = Settings.shared.lastTrackPosition
+                        
+                        Task {
+                            try? await player.load(url: lastTrackURL)
+                            try? await player.seek(to: position)
+                            if wasPlaying {
+                                player.play()
+                            }
+                        }
+                        
+                        // Reset the update flag
+                        Settings.shared.wasUpdated = false
+                    }
+                    
                     if let window = NSApp.windows.first {
                         // Configure window styles
                         window.styleMask = [.borderless, .fullSizeContentView]
@@ -153,13 +171,15 @@ extension NSWindow {
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillFinishLaunching(_ notification: Notification) {
-        // Check if app was launched with file
+        // Check if app was launched with file or after update
         if let appleEvent = NSAppleEventManager.shared().currentAppleEvent,
            appleEvent.eventClass == kCoreEventClass,
            appleEvent.eventID == kAEOpenDocuments {
             Settings.shared.launchedWithFile = true
+        } else if Settings.shared.wasUpdated {
+            // Keep the wasUpdated flag if we're restoring after update
+            Settings.shared.launchedWithFile = false
         } else {
-            // Only reset if it wasn't launched with file
             Settings.shared.launchedWithFile = false
         }
     }

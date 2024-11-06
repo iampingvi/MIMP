@@ -147,6 +147,14 @@ class UpdateManager: NSObject, ObservableObject {
     }
     
     private func handleDownloadedFile(at downloadUrl: URL) async throws {
+        // Save current playback state
+        if let currentTrack = AudioPlayer.shared.currentTrack {
+            Settings.shared.lastTrackURL = currentTrack.fileURL
+            Settings.shared.lastTrackPosition = AudioPlayer.shared.currentTime
+            Settings.shared.lastTrackWasPlaying = AudioPlayer.shared.isPlaying
+            Settings.shared.wasUpdated = true
+        }
+        
         let fileManager = FileManager.default
         let tempDir = fileManager.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         
