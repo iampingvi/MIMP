@@ -42,7 +42,6 @@ struct WaveformView: View {
                             // Calculate the progress for this specific bar
                             let barStartX = x
                             let barEndX = x + barWidth
-                            let barCenterX = barStartX + (barWidth / 2)
                             
                             // Calculate how much of this bar should be filled
                             let fillProgress: CGFloat
@@ -100,17 +99,32 @@ struct WaveformView: View {
                     }
                     
                     // Progress indicator
-                    Rectangle()
-                        .fill(Color.retroAccent.opacity(0.5))
-                        .frame(width: 2)
-                        .position(x: geometry.size.width * CGFloat(currentTime / duration), y: geometry.size.height / 2)
+                    let progressPosition = geometry.size.width * CGFloat(currentTime / duration)
+                    let amplitudes = getAmplitudeAtPosition(progressPosition, size: geometry.size)
+                    let barWidth = max(1.5, (geometry.size.width / CGFloat(waveformSamples.count)) - 1)
+                    
+                    VStack(spacing: 0) {
+                        Rectangle()
+                            .fill(Color.retroAccent.opacity(0.5))
+                            .frame(width: barWidth, height: amplitudes.top)
+                        Rectangle()
+                            .fill(Color.retroAccent.opacity(0.5))
+                            .frame(width: barWidth, height: amplitudes.bottom)
+                    }
+                    .position(x: progressPosition, y: geometry.size.height / 2)
                     
                     // Hover indicator
                     if let x = hoveredX {
-                        Rectangle()
-                            .fill(Color.white.opacity(0.2))
-                            .frame(width: 2)
-                            .position(x: x, y: geometry.size.height / 2)
+                        let hoverAmplitudes = getAmplitudeAtPosition(x, size: geometry.size)
+                        VStack(spacing: 0) {
+                            Rectangle()
+                                .fill(Color.white.opacity(0.2))
+                                .frame(width: barWidth, height: hoverAmplitudes.top)
+                            Rectangle()
+                                .fill(Color.white.opacity(0.2))
+                                .frame(width: barWidth, height: hoverAmplitudes.bottom)
+                        }
+                        .position(x: x, y: geometry.size.height / 2)
                     }
                 }
             }
@@ -226,6 +240,24 @@ struct WaveformView: View {
                 }
             }
         }
+    }
+    
+    // В ZStack добавим функцию для получения амплитуды в текущей позиции
+    func getAmplitudeAtPosition(_ position: CGFloat, size: CGSize) -> (top: CGFloat, bottom: CGFloat) {
+        let pointSpacing = size.width / CGFloat(waveformSamples.count)
+        let index = Int((position / size.width) * CGFloat(waveformSamples.count))
+        
+        guard index >= 0 && index < waveformSamples.count else {
+            return (0, 0)
+        }
+        
+        let sample = waveformSamples[index]
+        let normalizedSample = pow(CGFloat(sample), 0.8)
+        let maxAmplitude = size.height / 2.2
+        let topAmplitude = normalizedSample * maxAmplitude
+        let bottomAmplitude = topAmplitude * 0.85
+        
+        return (topAmplitude, bottomAmplitude)
     }
 }
 
