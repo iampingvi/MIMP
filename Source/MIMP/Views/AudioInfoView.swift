@@ -8,7 +8,7 @@ struct AudioInfoView: View {
         [
             (audioInfo.format, "music.note.list"),
             (audioInfo.bitRate > 0 ? "\(audioInfo.bitRate) kbps" : "N/A", "gauge.with.needle"),
-            (audioInfo.sampleRate > 0 ? "\(audioInfo.sampleRate) Hz" : "N/A", "waveform"),
+            (audioInfo.sampleRate > 0 ? String(format: "%.1f kHz", Double(audioInfo.sampleRate) / 1000) : "N/A", "waveform"),
             (audioInfo.channels > 0 ? (audioInfo.channels == 1 ? "Mono" : "Stereo") : "N/A", "speaker.wave.2")
         ]
     }
