@@ -129,8 +129,23 @@ struct ContentView: View {
         .onAppear {
             isFocused = true
             NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [self] event in
+                // 1. Сначала проверяем комбинации с Command
+                if event.modifierFlags.contains(.command) {
+                    switch event.keyCode {
+                    case 12: // Cmd+Q (quit)
+                        NSApplication.shared.terminate(nil)
+                        return nil
+                    case 4:  // Cmd+H (hide)
+                        NSApplication.shared.hide(nil)
+                        return nil
+                    default:
+                        break
+                    }
+                }
+                
+                // 2. Затем проверяем обычные клавиши
                 switch event.keyCode {
-                case 49: // Space key
+                case 49: // Space
                     player.togglePlayPause()
                     return nil
                 case 123: // Left Arrow
@@ -151,9 +166,31 @@ struct ContentView: View {
                 case 125: // Down Arrow
                     player.adjustVolume(by: -0.05)
                     return nil
+                case 46: // M key (mute)
+                    if event.modifierFlags.intersection(.deviceIndependentFlagsMask) == [] {
+                        player.toggleMute()
+                        return nil
+                    }
                 default:
-                    return event
+                    // 3. Проверяем последовательность "deuse"
+                    let key = event.charactersIgnoringModifiers?.lowercased() ?? ""
+                    let currentTime = Date()
+                    
+                    if currentTime.timeIntervalSince(lastKeyPressTime) > 1.0 {
+                        pressedKeys.removeAll()
+                    }
+                    lastKeyPressTime = currentTime
+                    pressedKeys.insert(key)
+                    
+                    let sequence = "deuse"
+                    if sequence.allSatisfy({ pressedKeys.contains(String($0)) }) {
+                        resetDefaultPlayer()
+                        pressedKeys.removeAll()
+                        return nil
+                    }
                 }
+                
+                return event
             }
             
             NSEvent.addLocalMonitorForEvents(matching: .keyUp) { [self] event in
@@ -202,11 +239,29 @@ struct ContentView: View {
             }
             
             NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-                // Use keyCode 46 which is 'M' key in any layout
-                if event.keyCode == 46 {  // 46 is 'M' key
+                // First check for command shortcuts
+                if event.modifierFlags.contains(.command) {
+                    switch event.keyCode {
+                    case 12: // Cmd+Q (quit)
+                        NSApplication.shared.terminate(nil)
+                        return nil
+                    case 4:  // Cmd+H (hide)
+                        NSApplication.shared.hide(nil)
+                        return nil
+                    case 46: // Cmd+M (minimize)
+                        NSApp.mainWindow?.miniaturize(nil)
+                        return nil
+                    default:
+                        break
+                    }
+                }
+                
+                // Then check for mute (M key without modifiers)
+                if event.keyCode == 46 && event.modifierFlags.intersection(.deviceIndependentFlagsMask) == [] {
                     player.toggleMute()
                     return nil
                 }
+                
                 return event
             }
         }
