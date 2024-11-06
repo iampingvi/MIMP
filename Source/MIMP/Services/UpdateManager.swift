@@ -7,7 +7,6 @@ class UpdateManager: NSObject, ObservableObject {
     
     @Published var isUpdateAvailable = false {
         didSet {
-            // Показываем иконку обновления только если обновление доступно
             if !isUpdateAvailable {
                 showingUpdate = false
             }
@@ -75,7 +74,11 @@ class UpdateManager: NSObject, ObservableObject {
                 latestVersion = release.tagName
                 changelog = release.body
                 isUpdateAvailable = true
-                showingUpdate = true
+                
+                // Показываем окно обновления только если приложение не было запущено через файл
+                showingUpdate = !Settings.shared.launchedWithFile
+                print("Launched with file: \(Settings.shared.launchedWithFile)")
+                print("Showing update window: \(showingUpdate)")
             } else {
                 print("No update needed")
             }
@@ -196,7 +199,7 @@ class UpdateManager: NSObject, ObservableObject {
                 try fileManager.removeItem(at: backupURL)
             }
             
-            // Преиеновыва��м текущую версию  .old
+            // Преиновывам текущую версию  .old
             try fileManager.moveItem(at: oldAppURL, to: backupURL)
             
             // Копируем новую версию на место старой

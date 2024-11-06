@@ -669,7 +669,7 @@ struct AboutView: View {
                         ForEach([
                             ("github-mark", "GitHub", "https://github.com/iampingvi/MIMP"),
                             ("cup.and.saucer.fill", "Support", "https://www.buymeacoffee.com/pingvi"),
-                            ("globe", "Website", "https://iampingvi.github.io/MIMP")
+                            ("globe", "Website", "https://mimp.pingvi.letz.dev")
                         ], id: \.1) { icon, text, urlString in
                             Link(destination: URL(string: urlString)!) {
                                 HStack(spacing: 6) {
