@@ -34,7 +34,7 @@ struct MIMPApp: App {
                             let backgroundView = NSView(frame: visualEffect.bounds)
                             backgroundView.wantsLayer = true
                             backgroundView.layer?.backgroundColor = NSColor.clear.cgColor
-                            backgroundView.layer?.cornerRadius = 10
+                            backgroundView.layer?.cornerRadius = Settings.shared.isWindowExpanded ? 0 : 10
                             backgroundView.layer?.shadowColor = NSColor.black.cgColor
                             backgroundView.layer?.shadowOpacity = 0.2
                             backgroundView.layer?.shadowOffset = CGSize(width: 0, height: -2)
@@ -55,14 +55,14 @@ struct MIMPApp: App {
                             visualEffect.material = .windowBackground
                             visualEffect.state = .active
                             visualEffect.isEmphasized = false
-                            visualEffect.layer?.cornerRadius = 10
+                            visualEffect.layer?.cornerRadius = Settings.shared.isWindowExpanded ? 0 : 10
                             visualEffect.layer?.masksToBounds = true
                         }
 
                         // Configure content view
                         if let contentView = window.contentView {
                             contentView.wantsLayer = true
-                            contentView.layer?.cornerRadius = 10
+                            contentView.layer?.cornerRadius = Settings.shared.isWindowExpanded ? 0 : 10
                             contentView.layer?.masksToBounds = true
                         }
 
@@ -94,8 +94,8 @@ extension NSWindow {
     @objc func toggleExpand() {
         let screen = NSScreen.main?.visibleFrame ?? .zero
         let currentFrame = self.frame
-
-        if currentFrame.width < screen.width {
+        
+        if currentFrame.width < screen.width - 20 {
             // Expand the window to full screen width
             let newFrame = NSRect(
                 x: screen.minX,
@@ -103,17 +103,43 @@ extension NSWindow {
                 width: screen.width,
                 height: currentFrame.height
             )
+            Settings.shared.isWindowExpanded = true
+            
+            // Remove corner radius
+            self.contentView?.layer?.cornerRadius = 0
+            if let visualEffect = self.contentView?.superview as? NSVisualEffectView {
+                visualEffect.layer?.cornerRadius = 0
+                if let backgroundView = visualEffect.superview?.subviews.first(where: { $0 != visualEffect }) {
+                    backgroundView.layer?.cornerRadius = 0
+                }
+            }
+            
             self.setFrame(newFrame, display: true, animate: true)
         } else {
-            // Restore to standard size
-            let newFrame = NSRect(
-                x: screen.midX - 400, // center the window
-                y: currentFrame.minY,
-                width: 800,
-                height: currentFrame.height
-            )
-            self.setFrame(newFrame, display: true, animate: true)
+            restoreToStandardSize()
         }
+    }
+    
+    func restoreToStandardSize() {
+        let screen = NSScreen.main?.visibleFrame ?? .zero
+        let newFrame = NSRect(
+            x: screen.midX - 400,
+            y: self.frame.minY,
+            width: 800,
+            height: self.frame.height
+        )
+        Settings.shared.isWindowExpanded = false
+        
+        // Restore corner radius
+        self.contentView?.layer?.cornerRadius = 10
+        if let visualEffect = self.contentView?.superview as? NSVisualEffectView {
+            visualEffect.layer?.cornerRadius = 10
+            if let backgroundView = visualEffect.superview?.subviews.first(where: { $0 != visualEffect }) {
+                backgroundView.layer?.cornerRadius = 10
+            }
+        }
+        
+        self.setFrame(newFrame, display: true, animate: true)
     }
 }
 

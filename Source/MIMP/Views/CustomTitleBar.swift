@@ -229,7 +229,7 @@ struct WindowDraggingView: NSViewRepresentable {
     }
     
     func makeNSView(context: Context) -> NSView {
-        let view = NSView()
+        let view = DraggableView()
         view.wantsLayer = true
         
         let area = NSTrackingArea(rect: .zero,
@@ -242,10 +242,19 @@ struct WindowDraggingView: NSViewRepresentable {
         let dragGesture = NSPanGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handlePan(_:)))
         view.addGestureRecognizer(dragGesture)
         
+        // Добавляем обработчик двойного клика
+        let clickGesture = NSClickGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleDoubleClick(_:)))
+        clickGesture.numberOfClicksRequired = 2
+        view.addGestureRecognizer(clickGesture)
+        
         return view
     }
     
     func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
+class DraggableView: NSView {
+    override var mouseDownCanMoveWindow: Bool { true }
 }
 
 extension WindowDraggingView.Coordinator {
@@ -254,7 +263,16 @@ extension WindowDraggingView.Coordinator {
         
         switch gesture.state {
         case .began:
-            initialLocation = window.frame.origin
+            // Если окно развернуто, эмулируем двойной клик перед началом перетаскивания
+            if Settings.shared.isWindowExpanded {
+                handleDoubleClick(NSClickGestureRecognizer(target: nil, action: nil))
+                // Немного подождем, пока окно изменит размер
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    self.initialLocation = window.frame.origin
+                }
+            } else {
+                initialLocation = window.frame.origin
+            }
             isDragging = true
             
         case .changed:
@@ -274,6 +292,12 @@ extension WindowDraggingView.Coordinator {
             
         default:
             break
+        }
+    }
+    
+    @objc func handleDoubleClick(_ gesture: NSClickGestureRecognizer) {
+        if let window = gesture.view?.window {
+            window.toggleExpand()
         }
     }
 }

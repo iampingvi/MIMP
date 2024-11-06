@@ -13,6 +13,7 @@ class Settings {
     private let defaultPlayerSetKey = "app.defaultPlayerSet"
     private let launchedWithFileKey = "app.launchedWithFile"
     private let isWindowPinnedKey = "window.isPinned"
+    private let isWindowExpandedKey = "window.isExpanded"
     
     var volume: Float {
         get { Float(defaults.double(forKey: volumeKey)) }
@@ -59,6 +60,11 @@ class Settings {
         set { defaults.set(newValue, forKey: isWindowPinnedKey) }
     }
     
+    var isWindowExpanded: Bool {
+        get { defaults.bool(forKey: isWindowExpandedKey) }
+        set { defaults.set(newValue, forKey: isWindowExpandedKey) }
+    }
+    
     private init() {
         // Временно раскомментируйте эту строку для тестирования:
 //          defaults.removeObject(forKey: isFirstLaunchKey)
@@ -89,6 +95,9 @@ class Settings {
         }
         if defaults.object(forKey: isWindowPinnedKey) == nil {
             defaults.set(false, forKey: isWindowPinnedKey)
+        }
+        if defaults.object(forKey: isWindowExpandedKey) == nil {
+            defaults.set(false, forKey: isWindowExpandedKey)
         }
     }
 } 
