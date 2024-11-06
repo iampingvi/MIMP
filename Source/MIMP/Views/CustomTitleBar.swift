@@ -21,6 +21,7 @@ struct CustomTitleBar: View {
                             design: themeManager.isRetroMode ? .monospaced : .default
                         ))
                         .foregroundColor(Color.retroText)
+                        .opacity(0.7)
                         .lineLimit(1)
                         .frame(width: geometry.size.width * 0.75, alignment: .center)
                         .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
@@ -48,6 +49,7 @@ struct CustomTitleBar: View {
                             design: themeManager.isRetroMode ? .monospaced : .default
                         ))
                         .foregroundColor(Color.retroText)
+                        .opacity(0.7)
                         .lineLimit(1)
                         .frame(width: geometry.size.width * 0.75, alignment: .center)
                         .position(x: geometry.size.width / 2, y: geometry.size.height / 2)

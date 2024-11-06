@@ -531,8 +531,8 @@ struct DropZoneView: View {
                     ))
                     .foregroundColor(Color.retroText)
                 Text(themeManager.isRetroMode ? 
-                    "Supported formats: [\(AudioFormat.formatsDescription)]" :
-                    "Supported formats: (\(AudioFormat.formatsDescription))")
+                    "Supported formats: \(AudioFormat.formatsDescription)" :
+                    "Supported formats: \(AudioFormat.formatsDescription)")
                     .font(.system(
                         size: 11,
                         design: themeManager.isRetroMode ? .monospaced : .default
