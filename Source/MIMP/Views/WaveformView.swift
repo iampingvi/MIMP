@@ -124,7 +124,7 @@ struct WaveformView: View {
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in
                         hoveredX = value.location.x
-                        let progress = value.location.x / geometry.size.width
+                        let progress = max(0, min(value.location.x / geometry.size.width, 1.0))
                         onSeek?(duration * Double(progress))
                     }
                     .onEnded { _ in

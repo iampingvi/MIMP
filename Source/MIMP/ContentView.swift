@@ -421,7 +421,7 @@ struct PlayerInterface: View {
 
     var body: some View {
         VStack(spacing: isCompactMode ? 8 : 15) {
-            // Показываем аудио информацию только если не в компактном режиме
+            // Показываем аудио ин��ормацию только если не в компактном режиме
             if !isCompactMode {
                 if let audioInfo = player.audioInfo {
                     audioInfo.view()
@@ -506,9 +506,11 @@ struct PlayerInterface: View {
     }
 
     private func formatTime(_ time: TimeInterval) -> String {
-        let minutes = Int(time) / 60
-        let seconds = Int(time) % 60
-        return showRemainingTime && time != track.duration ? 
+        // Ограничиваем время между 0 и длительностью трека
+        let clampedTime = min(max(time, 0), track.duration)
+        let minutes = Int(clampedTime) / 60
+        let seconds = Int(clampedTime) % 60
+        return showRemainingTime && clampedTime != track.duration ? 
             String(format: "-%d:%02d", minutes, seconds) :
             String(format: "%d:%02d", minutes, seconds)
     }
