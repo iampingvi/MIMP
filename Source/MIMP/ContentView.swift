@@ -1226,53 +1226,144 @@ struct FirstLaunchView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Title bar with title
-            HStack {
-                Spacer()
-                Text("Welcome to MIMP!")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.white)
-                Spacer()
-            }
-            .frame(height: 28)
-            
-            // Main content
-            HStack(spacing: isCompactMode ? 15 : 30) {
-                // Column 1 - App Icon
-                VStack(alignment: .center, spacing: 8) {
+            if isCompactMode {
+                // Компактный режим
+                HStack(spacing: 15) {
+                    // App Icon
                     if let appIcon = NSImage(named: "AppIcon") {
                         Image(nsImage: appIcon)
                             .resizable()
-                            .frame(width: isCompactMode ? 48 : 64, height: isCompactMode ? 48 : 64)
-                            .cornerRadius(15)
+                            .frame(width: 32, height: 32)
+                            .cornerRadius(8)
+                    }
+                    
+                    // Description and Formats
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Set MIMP as default player?")
+                            .font(.system(size: 11, weight: .medium))
+                        Text("Formats: \(AudioFormat.formatsDescription)")
+                            .font(.system(size: 9))
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+                    
+                    Spacer()
+                    
+                    // Buttons
+                    HStack(spacing: 8) {
+                        Button(action: {
+                            isPresented = false
+                            Settings.shared.isFirstLaunch = false
+                        }) {
+                            Text("Skip")
+                                .font(.system(size: 11))
+                                .foregroundColor(.white.opacity(0.7))
+                        }
+                        .buttonStyle(.plain)
+                        
+                        Button(action: {
+                            Task {
+                                await setAsDefaultPlayer()
+                                isPresented = false
+                                Settings.shared.isFirstLaunch = false
+                            }
+                        }) {
+                            Text("Set as Default")
+                                .font(.system(size: 11))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.blue)
+                                .cornerRadius(4)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
-                .frame(width: isCompactMode ? 80 : 120)
-
-                // Column 2 - Description
-                VStack(alignment: .leading, spacing: isCompactMode ? 4 : 6) {
-                    Text("Would you like to set MIMP\nas the default player?")
-                        .font(.system(size: isCompactMode ? 10 : 11))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                
+            } else {
+                // Обычный режим (существующий код)
+                HStack {
+                    Spacer()
+                    Text("Welcome to MIMP!")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.white)
+                    Spacer()
                 }
-                .frame(width: isCompactMode ? 120 : 140, alignment: .leading)
+                .frame(height: 28)
+                
+                HStack(spacing: 30) {
+                    // Column 1 - App Icon
+                    VStack(alignment: .center, spacing: 8) {
+                        if let appIcon = NSImage(named: "AppIcon") {
+                            Image(nsImage: appIcon)
+                                .resizable()
+                                .frame(width: 64, height: 64)
+                                .cornerRadius(15)
+                        }
+                    }
+                    .frame(width: 120)
 
-                // Column 3 - Formats
-                VStack(alignment: .leading, spacing: isCompactMode ? 6 : 8) {
-                    Text("Formats: (\(AudioFormat.formatsDescription))")
-                        .font(.system(size: isCompactMode ? 10 : 11))
+                    // Column 2 - Description
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Would you like to set MIMP\nas the default player?")
+                            .font(.system(size: 11))
+                    }
+                    .frame(width: 140, alignment: .leading)
+
+                    // Column 3 - Formats
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Formats: (\(AudioFormat.formatsDescription))")
+                            .font(.system(size: 11))
+                    }
+                    .frame(width: 120)
+                    
+                    // Buttons
+                    VStack(spacing: 8) {
+                        Button(action: {
+                            Task {
+                                await setAsDefaultPlayer()
+                                isPresented = false
+                                Settings.shared.isFirstLaunch = false
+                            }
+                        }) {
+                            Text("Set as Default")
+                                .font(.system(size: 11))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.blue)
+                                .cornerRadius(4)
+                        }
+                        .buttonStyle(.plain)
+                        
+                        Button(action: {
+                            isPresented = false
+                            Settings.shared.isFirstLaunch = false
+                        }) {
+                            Text("Skip")
+                                .font(.system(size: 11))
+                                .foregroundColor(.white.opacity(0.7))
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
-                .frame(width: isCompactMode ? 100 : 120)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
         }
-        .frame(minWidth: 600, idealWidth: 800, maxWidth: .infinity, minHeight: 128, idealHeight: 128, maxHeight: 128)
+        .frame(height: isCompactMode ? 80 : 120)
         .background(
             VisualEffectView(
                 material: .hudWindow,
                 blendingMode: .behindWindow
             )
         )
+    }
+    
+    private func setAsDefaultPlayer() async {
+        // Implement the logic to set MIMP as default player
+        // This should be similar to the logic in DefaultPlayerStatusView
     }
 }
 

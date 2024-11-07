@@ -104,7 +104,7 @@ class Settings {
     
     private init() {
         // Временно раскомментируйте эту строку для тестирования:
-//          defaults.removeObject(forKey: isFirstLaunchKey)
+       //  defaults.removeObject(forKey: isFirstLaunchKey)
         
         if defaults.object(forKey: isFirstLaunchKey) == nil {
             defaults.set(true, forKey: isFirstLaunchKey)
