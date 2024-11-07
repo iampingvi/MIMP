@@ -137,7 +137,7 @@ struct CustomTitleBar: View {
                 HStack(spacing: 2) {
                     // Кнопка закрепления окна
                     WindowButton(
-                        color: isWindowPinned ? .blue : .white.opacity(0.5),
+                        color: isWindowPinned ? NSColor.controlAccentColor.asColor : .white.opacity(0.5),
                         symbol: isWindowPinned ? "pin.fill" : "pin.fill"
                     )
                     .help(isWindowPinned ? "Unpin Window" : "Pin Window")
@@ -311,5 +311,11 @@ extension WindowDraggingView.Coordinator {
         if let window = gesture.view?.window {
             window.toggleExpand()
         }
+    }
+}
+
+extension NSColor {
+    var asColor: Color {
+        Color(nsColor: self)
     }
 }
