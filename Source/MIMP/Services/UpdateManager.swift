@@ -76,7 +76,9 @@ class UpdateManager: NSObject, ObservableObject {
                 isUpdateAvailable = true
                 
                 // Показываем окно обновления только если приложение не было запущено через файл
-                showingUpdate = !Settings.shared.launchedWithFile
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    showingUpdate = true
+                }
                 print("Launched with file: \(Settings.shared.launchedWithFile)")
                 print("Showing update window: \(showingUpdate)")
             } else {

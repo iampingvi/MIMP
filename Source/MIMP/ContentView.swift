@@ -14,7 +14,6 @@ struct ContentView: View {
     @State private var showingAbout = false
     @Environment(\.scenePhase) private var scenePhase
     @FocusState private var isFocused: Bool
-    @StateObject private var themeManager = ThemeManager.shared
     @State private var seekTimer: Timer?
     @State private var isSeekingForward = false
     @State private var isSeekingBackward = false
@@ -22,124 +21,152 @@ struct ContentView: View {
     @StateObject private var updateManager = UpdateManager.shared
     @State private var pressedKeys: Set<String> = []
     @State private var lastKeyPressTime: Date = Date()
+    @State private var isCompactMode = Settings.shared.isCompactMode
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .top) {
+            // Background blur
+            VisualEffectView(
+                material: .hudWindow,
+                blendingMode: .behindWindow
+            )
+            .zIndex(1)
+
             // Background with artwork
             if let track = player.currentTrack, !showingAbout {
                 HStack(spacing: 0) {
                     // Left part with artwork and gradient
-                    ZStack(alignment: .trailing) {
+                    ZStack(alignment: .top) {
                         AsyncImage(url: track.artwork) { phase in
                             switch phase {
                             case .success(let image):
                                 image
                                     .resizable()
                                     .aspectRatio(contentMode: .fill)
-                                    .frame(width: 128, height: 128)
+                                    .frame(
+                                        width: isCompactMode ? 80 : 128, 
+                                        height: isCompactMode ? 80 : 120,
+                                        alignment: .top
+                                    )
                                     .clipped()
                                     .overlay(Color.black.opacity(0.5))
-                                    .overlay(
-                                        LinearGradient(
-                                            gradient: Gradient(stops: [
-                                                .init(color: Color.black.opacity(1), location: 0),
-                                                .init(color: Color.black.opacity(0), location: 1)
-                                            ]),
-                                            startPoint: .trailing,
-                                            endPoint: .leading
-                                        )
-                                        .blendMode(.destinationOut)
-                                    )
                             case .empty, .failure:
                                 // Default macOS-style music icon
                                 ZStack {
                                     RoundedRectangle(cornerRadius: 8)
                                         .fill(Color.gray.opacity(0.2))
-                                        .frame(width: 128, height: 128)
+                                        .frame(
+                                            width: isCompactMode ? 80 : 128, 
+                                            height: isCompactMode ? 80 : 120,
+                                            alignment: .top
+                                        )
                                     Image(systemName: "music.note")
-                                        .font(.system(size: 40))
+                                        .font(.system(size: isCompactMode ? 24 : 40))
                                         .foregroundColor(.gray)
                                 }
                                 .overlay(Color.black.opacity(0.5))
-                                .overlay(
-                                    LinearGradient(
-                                        gradient: Gradient(stops: [
-                                            .init(color: Color.black.opacity(1), location: 0),
-                                            .init(color: Color.black.opacity(0), location: 1)
-                                        ]),
-                                        startPoint: .trailing,
-                                        endPoint: .leading
-                                    )
-                                    .blendMode(.destinationOut)
-                                )
                             @unknown default:
                                 EmptyView()
                             }
                         }
                     }
-                    .frame(width: 128)
+                    .frame(width: isCompactMode ? 80 : 128, alignment: .top)
+                    .overlay(
+                        LinearGradient(
+                            gradient: Gradient(stops: [
+                                .init(color: Color.black.opacity(1), location: 0),
+                                .init(color: Color.black.opacity(0), location: 1)
+                            ]),
+                            startPoint: .trailing,
+                            endPoint: .leading
+                        )
+                        .blendMode(.destinationOut)
+                    )
                     .compositingGroup()
+                    .clipped()
+                    .transaction { transaction in
+                        transaction.animation = .spring(response: 0.3, dampingFraction: 0.8)
+                    }
 
                     Spacer()
                 }
+                .frame(maxHeight: .infinity, alignment: .top)
+                .zIndex(2)
             }
 
             // Main content
             VStack(spacing: 0) {
                 CustomTitleBar(player: player, showingAbout: $showingAbout)
                     .background(Color.clear)
-
-                // Main content
+                    .transaction { transaction in
+                        transaction.animation = nil
+                    }
+                
                 ZStack {
                     if let track = player.currentTrack {
                         NonDraggableView {
                             PlayerInterface(player: player, track: track)
                         }
                     } else if !Settings.shared.launchedWithFile && !player.isLoading {
-                        DropZoneView(isDragging: $isDragging)
+                        DropZoneView(isDragging: $isDragging, isCompactMode: isCompactMode)
                     }
                 }
-                .frame(minWidth: 600, idealWidth: 800, maxWidth: .infinity, minHeight: 100, idealHeight: 100, maxHeight: 100)
-                .background(Color.clear)
+                .frame(
+                    minWidth: 600, 
+                    idealWidth: 800, 
+                    maxWidth: .infinity, 
+                    minHeight: isCompactMode ? 52 : 92,
+                    idealHeight: isCompactMode ? 52 : 92,
+                    maxHeight: isCompactMode ? 52 : 92
+                )
+                .animation(.easeInOut(duration: 0.3), value: isCompactMode)
             }
-
-            // About view overlay
-            if showingAbout {
-                AboutView(showingAbout: $showingAbout)
-                    .background(VisualEffectView(material: .hudWindow, blendingMode: .behindWindow))
-                    .transition(.move(edge: .top))
-                    .zIndex(1)
+            .frame(height: isCompactMode ? 80 : 120)
+            .background(Color.clear)
+            .zIndex(3)
+            
+            // Overlays
+            Group {
+                if showingAbout {
+                    AboutView(showingAbout: $showingAbout, isCompactMode: isCompactMode)
+                        .background(VisualEffectView(material: .hudWindow, blendingMode: .behindWindow))
+                        .frame(height: isCompactMode ? 80 : 120)
+                        .transition(
+                            .asymmetric(
+                                insertion: .move(edge: .top).combined(with: .opacity),
+                                removal: .move(edge: .top).combined(with: .opacity)
+                            )
+                        )
+                }
+                
+                if showingFirstLaunch {
+                    FirstLaunchView(isPresented: $showingFirstLaunch, isCompactMode: isCompactMode)
+                        .background(VisualEffectView(material: .hudWindow, blendingMode: .behindWindow))
+                        .frame(height: isCompactMode ? 80 : 120)
+                        .transition(
+                            .asymmetric(
+                                insertion: .move(edge: .top).combined(with: .opacity),
+                                removal: .move(edge: .top).combined(with: .opacity)
+                            )
+                        )
+                }
+                
+                if updateManager.showingUpdate {
+                    UpdateView()
+                        .background(VisualEffectView(material: .hudWindow, blendingMode: .behindWindow))
+                        .frame(height: isCompactMode ? 80 : 120)
+                        .transition(
+                            .asymmetric(
+                                insertion: .move(edge: .top).combined(with: .opacity),
+                                removal: .move(edge: .top).combined(with: .opacity)
+                            )
+                        )
+                }
             }
-
-            // Add first launch overlay
-            if showingFirstLaunch {
-                FirstLaunchView(isPresented: $showingFirstLaunch)
-                    .background(VisualEffectView(
-                        material: themeManager.isRetroMode ? .windowBackground : .hudWindow,
-                        blendingMode: .behindWindow
-                    ))
-                    .transition(AnyTransition.move(edge: .top))
-                    .zIndex(1)
-            }
-
-            if updateManager.showingUpdate {
-                UpdateView()
-                    .background(VisualEffectView(material: .hudWindow, blendingMode: .behindWindow))
-                    .transition(.move(edge: .top))
-                    .zIndex(2)
-            }
+            .zIndex(1000)
         }
-        .background(
-            VisualEffectView(
-                material: themeManager.isRetroMode ? .windowBackground : .hudWindow,
-                blendingMode: .behindWindow
-            )
-        )
-        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showingAbout)
-        .animation(.easeInOut(duration: 0.2), value: player.currentTrack != nil)
-        .animation(.easeInOut(duration: 0.2), value: isDragging)
-        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showingFirstLaunch)
-        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: updateManager.showingUpdate)
+        .frame(height: isCompactMode ? 80 : 120)
+        .clipped()
         .onDrop(of: [.audio], isTargeted: $isDragging) { providers in
             let providers = Array(providers)
             Task { @MainActor in
@@ -249,7 +276,7 @@ struct ContentView: View {
                 // Добавляем нажатую клавишу
                 pressedKeys.insert(key)
                 
-                // Проверяем последоваельность "deuse"
+                // Проверяем последоаельность "deuse"
                 let sequence = "deuse"
                 if sequence.allSatisfy({ pressedKeys.contains(String($0)) }) {
                     resetDefaultPlayer()
@@ -301,6 +328,9 @@ struct ContentView: View {
             if Settings.shared.launchedWithFile && player.currentTrack == nil {
                 Settings.shared.launchedWithFile = true
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
+            isCompactMode = Settings.shared.isCompactMode
         }
     }
 
@@ -387,14 +417,18 @@ struct PlayerInterface: View {
     let track: Track
     @State private var showPlayIcon: Bool = false
     @State private var showRemainingTime: Bool = Settings.shared.showRemainingTime
-    @StateObject private var themeManager = ThemeManager.shared
+    @State private var isCompactMode = Settings.shared.isCompactMode
 
     var body: some View {
-        VStack(spacing: 15) {
-            if let audioInfo = player.audioInfo {
-                audioInfo.view()
-                    .opacity(player.isLoading ? 0 : 1)
-                    .animation(.easeInOut(duration: 0.3).delay(0.2), value: player.isLoading)
+        VStack(spacing: isCompactMode ? 8 : 15) {
+            // Показываем аудио информацию только если не в компактном режиме
+            if !isCompactMode {
+                if let audioInfo = player.audioInfo {
+                    audioInfo.view()
+                        .opacity(player.isLoading ? 0 : 1)
+                        .padding(.top, 8) // Добавляем отступ сверху
+                        .transition(.move(edge: .top).combined(with: .opacity)) // Добавляем анимацию
+                }
             }
             
             HStack(spacing: 15) {
@@ -404,57 +438,33 @@ struct PlayerInterface: View {
                         player.togglePlayPause()
                     }
                 }) {
-                    if themeManager.isRetroMode {
-                        ZStack {
-                            Rectangle()
-                                .stroke(Color.retroText, lineWidth: 1)
-                                .frame(width: 30, height: 30)
-                            Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                                .font(.system(size: 14))
-                                .foregroundColor(Color.retroText)
-                        }
-                    } else {
-                        Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                            .font(.system(size: 30))
-                            .foregroundColor(.white)
-                            .frame(width: 50)
-                    }
+                    Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                        .font(.system(size: 30))
+                        .foregroundColor(.white)
+                        .frame(width: 50)
                 }
                 .buttonStyle(.plain)
                 .scaleEffect(showPlayIcon ? 0.8 : 1.0)
                 .animation(.spring(response: 0.2), value: player.isPlaying)
-                .padding(.leading, 20)
-                .onChange(of: player.isPlaying) { isPlaying in
-                    withAnimation(.spring(response: 0.2)) {
-                        showPlayIcon = true
-                    }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        withAnimation(.spring(response: 0.2)) {
-                            showPlayIcon = false
-                        }
-                    }
-                }
-                .opacity(player.isLoading ? 0 : 1)
-                .animation(.easeInOut(duration: 0.3), value: player.isLoading)
+                .padding(.leading, isCompactMode ? 8 : 20)
+                .transition(.scale.combined(with: .opacity)) // Добавляем анимацию
 
                 // Track info and waveform
                 VStack(alignment: .leading, spacing: 8) {
                     // Waveform
-                    HStack(spacing: 8) {
+                    HStack(spacing: isCompactMode ? 4 : 8) {
                         Button(action: {
                             showRemainingTime.toggle()
                             Settings.shared.showRemainingTime = showRemainingTime
                         }) {
                             Text(formatTime(showRemainingTime ? track.duration - player.currentTime : player.currentTime))
-                                .font(.system(
-                                    size: 10, 
-                                    weight: .medium, 
-                                    design: themeManager.isRetroMode ? .monospaced : .monospaced
-                                ))
-                                .foregroundColor(Color.retroText.opacity(0.7))
-                                .frame(width: 45, alignment: .trailing)
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(.white.opacity(0.7))
+                                .frame(width: isCompactMode ? 35 : 45, alignment: .trailing)
                         }
                         .buttonStyle(.plain)
+                        .padding(.leading, isCompactMode ? -15 : -30)
+                        .transition(.scale.combined(with: .opacity))
 
                         WaveformView(
                             url: track.fileURL,
@@ -466,23 +476,32 @@ struct PlayerInterface: View {
                         )
                         .id(track.fileURL)
                         .frame(height: 30)
+                        .padding(.horizontal, isCompactMode ? 4 : 6)
+                        .transition(.opacity)
 
                         Text(formatTime(track.duration))
-                            .font(.system(
-                                size: 10, 
-                                weight: .medium, 
-                                design: themeManager.isRetroMode ? .monospaced : .monospaced
-                            ))
-                            .foregroundColor(Color.retroText.opacity(0.7))
-                            .frame(width: 45, alignment: .leading)
-                            .padding(.trailing, -20)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.white.opacity(0.7))
+                            .frame(width: isCompactMode ? 35 : 45, alignment: .leading)
+                            .padding(.trailing, isCompactMode ? -8 : -20)
+                            .transition(.scale.combined(with: .opacity))
                     }
                     .opacity(player.isLoading ? 0 : 1)
-                    .animation(.easeInOut(duration: 0.3).delay(0.1), value: player.isLoading)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, isCompactMode ? 4 : 12)
+            .padding(.vertical, isCompactMode ? 2 : 8)
+        }
+        .animation(.easeInOut(duration: 0.3), value: isCompactMode) // Анимация для всего интерфейса
+        .onChange(of: isCompactMode) { newValue in
+            withAnimation(.easeInOut(duration: 0.3)) {
+                // Обновляем состояние при изменении режима
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
+            withAnimation(.easeInOut(duration: 0.3)) {
+                isCompactMode = Settings.shared.isCompactMode
+            }
         }
     }
 
@@ -532,41 +551,29 @@ struct CoverArtView: View {
 
 struct DropZoneView: View {
     @Binding var isDragging: Bool
-    @StateObject private var themeManager = ThemeManager.shared
-
+    let isCompactMode: Bool
+    
     var body: some View {
-        HStack(spacing: 20) {
-            if themeManager.isRetroMode {
-                Text("[]")
-                    .font(.system(size: 30, design: .monospaced))
-                    .foregroundColor(Color.retroText.opacity(0.7))
-            } else {
+        Group {
+            HStack(spacing: isCompactMode ? 15 : 20) {
                 Image(systemName: "arrow.down.circle")
-                    .font(.system(size: 30))
-                    .foregroundColor(Color.retroText.opacity(0.7))
-            }
+                    .font(.system(size: isCompactMode ? 24 : 30))
+                    .foregroundColor(.white.opacity(isDragging ? 1 : 0.7))
 
-            VStack(alignment: .leading, spacing: 5) {
-                Text("Drop audio file to open")
-                    .font(.system(
-                        size: 13,
-                        weight: .medium,
-                        design: themeManager.isRetroMode ? .monospaced : .default
-                    ))
-                    .foregroundColor(Color.retroText)
-                Text(themeManager.isRetroMode ? 
-                    "Supported formats: \(AudioFormat.formatsDescription)" :
-                    "Supported formats: \(AudioFormat.formatsDescription)")
-                    .font(.system(
-                        size: 11,
-                        design: themeManager.isRetroMode ? .monospaced : .default
-                    ))
-                    .foregroundColor(Color.retroText.opacity(0.7))
+                VStack(alignment: .leading, spacing: isCompactMode ? 3 : 5) {
+                    Text("Drop audio file to open")
+                        .font(.system(size: isCompactMode ? 11 : 13, weight: .medium))
+                    Text("Supported formats: \(AudioFormat.formatsDescription)")
+                        .font(.system(size: isCompactMode ? 9 : 11))
+                }
+            }
+            .foregroundColor(.white.opacity(isDragging ? 1 : 0.7))
+            .padding(isCompactMode ? 20 : 40)
+            .transaction { transaction in
+                transaction.animation = nil  // Отключаем анимацию для изменения размеров
             }
         }
-        .padding(40)
-        .scaleEffect(isDragging ? 1.05 : 1)
-        .opacity(isDragging ? 1 : 0.7)
+        .animation(.easeInOut(duration: 0.2), value: isDragging) // Анимация прозрачности для всей группы
     }
 }
 
@@ -588,16 +595,23 @@ struct VisualEffectView: NSViewRepresentable {
     }
 }
 
+// Переименовываем enum
+enum PlayerDefaultStatus {
+    case none           // Не установлен ни для одного формата
+    case partial        // Установлен для некоторых фоматов
+    case complete       // Установлен для всех форматов
+}
+
 struct AboutView: View {
     @Binding var showingAbout: Bool
-    @StateObject private var themeManager = ThemeManager.shared
     @State private var autoUpdateEnabled = Settings.shared.autoUpdateEnabled
     @State private var isDefaultPlayerSet = Settings.shared.isDefaultPlayerSet
     @StateObject private var updateManager = UpdateManager.shared
     @State private var isSuccess = false
     @State private var refreshTrigger = false
     @State private var isHeartHovered = false
-
+    let isCompactMode: Bool
+    
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
     }
@@ -618,7 +632,7 @@ struct AboutView: View {
                 type.identifier as CFString,
                 LSRolesMask.viewer
                )?.takeRetainedValue() as String? {
-                // Если хотя бы один формат не устанолен для нашего приложения
+                // Если хотя бы один фомат не устанолен для нашего приложения
                 if handler != Bundle.main.bundleIdentifier {
                     return false
                 }
@@ -647,13 +661,7 @@ struct AboutView: View {
         return unsetFormats
     }
 
-    private enum DefaultPlayerStatus {
-        case none           // Не установлен ни для одного формата
-        case partial        // Установлен для некоторых форматов
-        case complete       // Установлен для всех форматов
-    }
-
-    private func getDefaultPlayerStatus() -> DefaultPlayerStatus {
+    private func getDefaultPlayerStatus() -> PlayerDefaultStatus {
         let unsetFormats = getUnsetFormats()
         if unsetFormats.isEmpty {
             return .complete
@@ -666,688 +674,354 @@ struct AboutView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Main content
-            HStack(spacing: 15) {
-                // Back button
-                Button(action: {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                        showingAbout = false
-                    }
-                }) {
-                    Group {
-                        if themeManager.isRetroMode {
-                            ZStack {
-                                Rectangle()
-                                    .stroke(Color.retroText, lineWidth: 1)
-                                    .frame(width: 24, height: 24)
-                                Image(systemName: "chevron.up")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(Color.retroText)
+            if isCompactMode {
+                // Компактный режим
+                ZStack {
+                    // Центральный контент
+                    VStack(spacing: 4) {
+                        // Заголовок с версией
+                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                            Text(appName)
+                                .font(.system(size: 12, weight: .medium))
+                            Text("(\(appVersion))")
+                                .font(.system(size: 8))
+                        }
+                        .foregroundColor(.white)
+                        
+                        // Ссылки
+                        HStack(spacing: 16) {
+                            ForEach([
+                                ("github-mark", "GitHub", "https://github.com/iampingvi/MIMP"),
+                                ("cup.and.saucer.fill", "Support", "https://www.buymeacoffee.com/pingvi"),
+                                ("globe", "Website", "https://mimp.pingvi.letz.dev")
+                            ], id: \.1) { icon, text, urlString in
+                                Link(destination: URL(string: urlString)!) {
+                                    HStack(spacing: 4) {
+                                        if icon == "github-mark" {
+                                            Image(icon)
+                                                .resizable()
+                                                .frame(width: 12, height: 12)
+                                                .colorMultiply(.white)
+                                        } else {
+                                            Image(systemName: icon)
+                                                .font(.system(size: 12))
+                                        }
+                                        Text(text)
+                                            .font(.system(size: 10))
+                                    }
+                                    .foregroundColor(.white)
+                                }
+                                .buttonStyle(.plain)
+                                .opacity(0.9)
+                                .hover { hovering in
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        if let view = NSApp.keyWindow?.contentView?.hitTest(NSEvent.mouseLocation)?.enclosingScrollView {
+                                            view.alphaValue = hovering ? 1 : 0.9
+                                        }
+                                    }
+                                }
                             }
-                        } else {
-                            Image(systemName: "chevron.up")
-                                .font(.system(size: 24))
-                                .foregroundColor(.white)
                         }
                     }
-                    .frame(width: 50)
-                    .contentShape(Rectangle())
+                    .frame(maxWidth: .infinity)
+                    
+                    // Кнопка закрытя слева
+                    HStack {
+                        Button(action: {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                showingAbout = false
+                            }
+                        }) {
+                            Group {
+                                Image(systemName: "chevron.up")
+                                    .font(.system(size: 24))
+                                    .foregroundColor(.white)
+                            }
+                            .frame(width: 24)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.leading, 30)
+                        Spacer()
+                    }
                 }
-                .buttonStyle(.plain)
-                .padding(.leading, 20)
-
-                // Content columns
-                HStack(spacing: 30) {
-                    // Column 1 - App Info
-                    VStack(alignment: .center, spacing: 8) {
+                .padding(.vertical, 8)
+                
+                Divider()
+                    .background(Color.white.opacity(0.2))
+                
+                // Футер с центрированным "Made with love"
+                HStack {
+                    DefaultPlayerStatusView(isCompactMode: isCompactMode)
+                        .frame(maxWidth: .infinity)
+                    
+                    // Центральный элемент
+                    HStack(spacing: 4) {
+                        Text("Made with")
+                            .font(.system(size: isCompactMode ? 10 : 11))
+                        Image(systemName: "heart.fill")
+                            .font(.system(size: isCompactMode ? 9 : 10))
+                        Text("by PINGVI")
+                            .font(.system(size: isCompactMode ? 10 : 11))
+                    }
+                    .foregroundColor(Color.white.opacity(0.7))
+                    .frame(maxWidth: .infinity)
+                    
+                    // Правый элемент
+                    HStack {
+                        Button(action: {
+                            autoUpdateEnabled.toggle()
+                            Settings.shared.autoUpdateEnabled = autoUpdateEnabled
+                            if autoUpdateEnabled {
+                                Task {
+                                    await updateManager.checkForUpdates(force: true)
+                                }
+                            }
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: autoUpdateEnabled ? "checkmark.circle.fill" : "circle")
+                                    .font(.system(size: isCompactMode ? 10 : 11))
+                                    .foregroundColor(autoUpdateEnabled ? .green : .white.opacity(0.7))
+                                Text("Automatic Updates")
+                                    .font(.system(size: isCompactMode ? 10 : 11))
+                                    .foregroundColor(.white.opacity(0.7))
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4)
+                
+            } else {
+                // Обычный режим
+                ZStack {
+                    // Центральный контент
+                    HStack(spacing: 30) {
+                        // Иконка приложения
                         if let appIcon = NSImage(named: "AppIcon") {
                             Image(nsImage: appIcon)
                                 .resizable()
                                 .frame(width: 64, height: 64)
-                                .cornerRadius(themeManager.isRetroMode ? 0 : 15)
-                                .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
-                                .onTapGesture {
-                                    themeManager.handleLogoClick()
-                                }
+                                .cornerRadius(15)
                         }
-                    }
-                    .frame(width: 120)
-
-                    // Column 2 - Description
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack(alignment: .firstTextBaseline, spacing: 4) {
-                            Text(appName)
-                                .font(.system(
-                                    size: 14,
-                                    weight: .medium,
-                                    design: themeManager.isRetroMode ? .monospaced : .default
-                                ))
-                                .foregroundColor(Color.retroText)
-                            Text(themeManager.isRetroMode ? "[\(appVersion)]" : "(\(appVersion))")
-                                .font(.system(
-                                    size: 9,
-                                    design: themeManager.isRetroMode ? .monospaced : .default
-                                ))
-                                .foregroundColor(Color.retroText.opacity(0.7))
-                                .offset(y: -2)
-                        }
-                        .padding(.bottom, 2)
                         
-                        Text("Minimal Interface\nMusic Player")
-                            .font(.system(
-                                size: 11,
-                                design: themeManager.isRetroMode ? .monospaced : .default
-                            ))
-                            .foregroundColor(Color.retroText.opacity(0.7))
-                            .multilineTextAlignment(.leading)
-                    }
-                    .frame(width: 140, alignment: .leading)
-
-                    // Column 3 - Links
-                    VStack(alignment: .leading, spacing: 8) {
-                        ForEach([
-                            ("github-mark", "GitHub", "https://github.com/iampingvi/MIMP"),
-                            ("cup.and.saucer.fill", "Support", "https://www.buymeacoffee.com/pingvi"),
-                            ("globe", "Website", "https://mimp.pingvi.letz.dev")
-                        ], id: \.1) { icon, text, urlString in
-                            Link(destination: URL(string: urlString)!) {
-                                HStack(spacing: 6) {
-                                    if icon == "github-mark" {
-                                        Image(icon)
-                                            .resizable()
-                                            .frame(width: 14, height: 14)
-                                            .if(themeManager.isRetroMode) { view in
-                                                view.colorMultiply(Color.retroText)
-                                            }
-                                    } else {
-                                        Image(systemName: icon)
-                                            .frame(width: 14)
-                                            .font(.system(size: 12))
-                                    }
-                                    Text(text)
-                                        .font(.system(
-                                            size: 12,
-                                            design: themeManager.isRetroMode ? .monospaced : .default
-                                        ))
-                                        .underline()
+                        VStack(alignment: .leading, spacing: 8) {
+                            // Информация о прложении
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                    Text(appName)
+                                        .font(.system(size: 14, weight: .medium))
+                                    Text("(\(appVersion))")
+                                        .font(.system(size: 9))
                                 }
-                                .foregroundColor(Color.retroText)
-                                .contentShape(Rectangle())
+                                Text("Minimal Interface Music Player")
+                                    .font(.system(size: 11))
                             }
-                            .buttonStyle(.plain)
-                            .opacity(0.9)
-                            .hover { hovering in
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    if let button = NSApp.keyWindow?.contentView?.hitTest(NSEvent.mouseLocation)?.enclosingScrollView {
-                                        button.alphaValue = hovering ? 1 : 0.9
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    .font(.system(size: 12))
-                    .foregroundColor(.white)
-                    .frame(width: 120)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.trailing, 20)
-            }
-            .frame(height: 85)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-
-            // Футер
-            Divider()
-                .background(Color.retroText.opacity(0.2))
-                .padding(.horizontal, 20)
-
-            ZStack {
-                // Левая часть - автообновления (прижата к левому краю)
-                Button(action: {
-                    autoUpdateEnabled.toggle()
-                    Settings.shared.autoUpdateEnabled = autoUpdateEnabled
-                    
-                    if autoUpdateEnabled {
-                        Task {
-                            await updateManager.checkForUpdates(force: true)
-                        }
-                    }
-                }) {
-                    HStack(spacing: 6) {
-                        // Стилизованный чекбокс автообновлений
-                        ZStack {
-                            if themeManager.isRetroMode {
-                                Rectangle()
-                                    .stroke(Color.retroText.opacity(0.7), lineWidth: 1)
-                                    .frame(width: 14, height: 14)
-                            } else {
-                                RoundedRectangle(cornerRadius: 3)
-                                    .stroke(Color.retroText.opacity(0.7), lineWidth: 1)
-                                    .frame(width: 14, height: 14)
-                            }
+                            .foregroundColor(.white)
                             
-                            if autoUpdateEnabled {
-                                if themeManager.isRetroMode {
-                                    Text("×")
-                                        .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                        .foregroundColor(Color.retroText)
-                                } else {
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 9, weight: .bold))
-                                        .foregroundColor(Color.retroText)
+                            // Ссылки
+                            HStack(spacing: 16) {
+                                ForEach([
+                                    ("github-mark", "GitHub", "https://github.com/iampingvi/MIMP"),
+                                    ("cup.and.saucer.fill", "Support", "https://www.buymeacoffee.com/pingvi"),
+                                    ("globe", "Website", "https://mimp.pingvi.letz.dev")
+                                ], id: \.1) { icon, text, urlString in
+                                    Link(destination: URL(string: urlString)!) {
+                                        HStack(spacing: 6) {
+                                            if icon == "github-mark" {
+                                                Image(icon)
+                                                    .resizable()
+                                                    .frame(width: 14, height: 14)
+                                                    .colorMultiply(.white)
+                                            } else {
+                                                Image(systemName: icon)
+                                                    .font(.system(size: 12))
+                                            }
+                                            Text(text)
+                                                .font(.system(size: 12))
+                                        }
+                                        .foregroundColor(.white)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .opacity(0.9)
+                                    .hover { hovering in
+                                        withAnimation(.easeInOut(duration: 0.2)) {
+                                            if let view = NSApp.keyWindow?.contentView?.hitTest(NSEvent.mouseLocation)?.enclosingScrollView {
+                                                view.alphaValue = hovering ? 1 : 0.9
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
-                        
-                        Text("Check for updates automatically")
-                            .font(.system(
-                                size: 11,
-                                design: themeManager.isRetroMode ? .monospaced : .default
-                            ))
-                            .foregroundColor(Color.retroText.opacity(0.7))
                     }
-                    .contentShape(Rectangle()) // Добавляем это для расширения области нажатия
-                }
-                .buttonStyle(.plain)
-                .padding(.leading, 20)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                
-                // Центральная часть - credits (абсолютно по центру)
-                HStack(spacing: 4) {
-                    Text("Made with")
-                        .font(.system(
-                            size: 12,
-                            design: themeManager.isRetroMode ? .monospaced : .default
-                        ))
-                        .foregroundColor(Color.retroText.opacity(0.7))
+                    .padding(.horizontal, 50)
                     
-                    Image(systemName: "heart.fill")
-                        .font(.system(size: 10))
-                        .foregroundStyle(
-                            LinearGradient(
-                                stops: [
-                                    .init(color: isHeartHovered ? 
-                                          Color(red: 0/255, green: 87/255, blue: 183/255) : // Синий
-                                          Color.retroText.opacity(0.7), 
-                                          location: 0.5),
-                                    .init(color: isHeartHovered ? 
-                                          Color(red: 0/255, green: 87/255, blue: 183/255) : // Синий
-                                          Color.retroText.opacity(0.7), 
-                                          location: 0.5),
-                                    .init(color: isHeartHovered ? 
-                                          Color(red: 255/255, green: 215/255, blue: 0/255) : // Желтый
-                                          Color.retroText.opacity(0.7), 
-                                          location: 0.5),
-                                    .init(color: isHeartHovered ? 
-                                          Color(red: 255/255, green: 215/255, blue: 0/255) : // Желтый
-                                          Color.retroText.opacity(0.7), 
-                                          location: 1.0)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .scaleEffect(isHeartHovered ? 1.2 : 1.0)
-                        .onHover { hovering in
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                isHeartHovered = hovering
-                            }
-                        }
-                        .animation(
-                            .easeInOut(duration: 0.5)
-                            .repeatForever(autoreverses: true),
-                            value: isHeartHovered && isHeartHovered
-                        )
-                    
-                    Text("by PINGVI")
-                        .font(.system(
-                            size: 12,
-                            design: themeManager.isRetroMode ? .monospaced : .default
-                        ))
-                        .foregroundColor(Color.retroText.opacity(0.7))
-                }
-                .frame(width: 200)
-                
-                // Правая часть - статус форматов (прижата к правому краю)
-                HStack(spacing: 6) {
-                    switch getDefaultPlayerStatus() {
-                    case .none:
-                        // Чекбокс для установки всех форматов
+                    // Кнопка закрытия слева
+                    HStack {
                         Button(action: {
-                            setAsDefaultPlayer()
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                showingAbout = false
+                            }
+                        }) {
+                            Group {
+                                Image(systemName: "chevron.up")
+                                    .font(.system(size: 24))
+                                    .foregroundColor(.white)
+                            }
+                            .frame(width: 24)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.leading, 30)
+                        Spacer()
+                    }
+                }
+                .padding(.vertical, 12)
+                
+                Divider()
+                    .background(Color.white.opacity(0.2))
+                
+                // Футер с центрированным "Made with love"
+                HStack {
+                    DefaultPlayerStatusView(isCompactMode: isCompactMode)
+                        .frame(maxWidth: .infinity)
+                    
+                    // Центральный элемент
+                    HStack(spacing: 4) {
+                        Text("Made with")
+                            .font(.system(size: isCompactMode ? 10 : 11))
+                        Image(systemName: "heart.fill")
+                            .font(.system(size: isCompactMode ? 9 : 10))
+                        Text("by PINGVI")
+                            .font(.system(size: isCompactMode ? 10 : 11))
+                    }
+                    .foregroundColor(Color.white.opacity(0.7))
+                    .frame(maxWidth: .infinity)
+                    
+                    // Правый элемент
+                    HStack {
+                        Button(action: {
+                            autoUpdateEnabled.toggle()
+                            Settings.shared.autoUpdateEnabled = autoUpdateEnabled
+                            if autoUpdateEnabled {
+                                Task {
+                                    await updateManager.checkForUpdates(force: true)
+                                }
+                            }
                         }) {
                             HStack(spacing: 6) {
-                                ZStack {
-                                    if themeManager.isRetroMode {
-                                        Rectangle()
-                                            .stroke(Color.retroText.opacity(0.7), lineWidth: 1)
-                                            .frame(width: 14, height: 14)
-                                    } else {
-                                        RoundedRectangle(cornerRadius: 3)
-                                            .stroke(Color.retroText.opacity(0.7), lineWidth: 1)
-                                            .frame(width: 14, height: 14)
-                                    }
-                                }
-                                Text("Set as default player")
-                                    .font(.system(
-                                        size: 11,
-                                        design: themeManager.isRetroMode ? .monospaced : .default
-                                    ))
-                                    .foregroundColor(Color.retroText.opacity(0.7))
+                                Image(systemName: autoUpdateEnabled ? "checkmark.circle.fill" : "circle")
+                                    .font(.system(size: isCompactMode ? 10 : 11))
+                                    .foregroundColor(autoUpdateEnabled ? .green : .white.opacity(0.7))
+                                Text("Automatic Updates")
+                                    .font(.system(size: isCompactMode ? 10 : 11))
+                                    .foregroundColor(.white.opacity(0.7))
                             }
                         }
                         .buttonStyle(.plain)
-                        
-                    case .partial:
-                        // Желтый индикатор с кнопкой Fix
-                        HStack(spacing: 6) {
-                            Image(systemName: "exclamationmark.circle.fill")
-                                .font(.system(size: 11))
-                                .foregroundColor(.yellow)
-                            let unsetFormats = getUnsetFormats()
-                            Text("Not default for: \(unsetFormats.joined(separator: ", "))")
-                                .font(.system(
-                                    size: 11,
-                                    design: themeManager.isRetroMode ? .monospaced : .default
-                                ))
-                                .foregroundColor(Color.retroText.opacity(0.7))
-                            Button(action: {
-                                setAsDefaultPlayer()
-                            }) {
-                                Text("Fix")
-                                    .font(.system(
-                                        size: 11,
-                                        design: themeManager.isRetroMode ? .monospaced : .default
-                                    ))
-                                    .foregroundColor(.blue)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 2)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 3)
-                                            .stroke(Color.blue, lineWidth: 1)
-                                    )
-                            }
-                            .buttonStyle(.plain)
-                        }
-                        
-                    case .complete:
-                        // Зеленый индикатор успеха
-                        HStack(spacing: 6) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 11))
-                                .foregroundColor(.green)
-                            Text("Set as default")
-                                .font(.system(
-                                    size: 11,
-                                    design: themeManager.isRetroMode ? .monospaced : .default
-                                ))
-                                .foregroundColor(Color.retroText.opacity(0.7))
-                        }
                     }
+                    .frame(maxWidth: .infinity)
                 }
-                .animation(.easeInOut(duration: 0.2), value: getDefaultPlayerStatus())
-                .animation(.easeInOut(duration: 0.2), value: refreshTrigger)
-                .padding(.trailing, 20)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-            }
-            .frame(height: 28)
-        }
-        .frame(minWidth: 600, idealWidth: 800, maxWidth: .infinity, minHeight: 120, idealHeight: 120, maxHeight: 120)
-        .background(
-            VisualEffectView(
-                material: themeManager.isRetroMode ? .windowBackground : .hudWindow,
-                blendingMode: .behindWindow
-            )
-        )
-        .onAppear {
-            // Проверяем статус при появлении окна
-            if !checkDefaultPlayerStatus() {
-                isDefaultPlayerSet = false
-                Settings.shared.isDefaultPlayerSet = false
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4)
             }
         }
-    }
-    
-    private func setAsDefaultPlayer() {
-        let workspace = NSWorkspace.shared
-        
-        print("\n=== MIMP Default Player Setup ===")
-        print("App Bundle ID: \(Bundle.main.bundleIdentifier ?? "Unknown")")
-        print("App URL: \(Bundle.main.bundleURL.path)")
-        
-        // Register for all audio files
-        if let audioType = UTType("public.audio") {
-            workspace.setDefaultApplication(
-                at: Bundle.main.bundleURL,
-                toOpen: audioType
-            )
-            print("✓ Registered for public.audio")
-        }
-        
-        // Force settings for problematic formats
-        let forceTypes = [
-            "aiff": [
-                "public.aiff-audio",
-                "public.aifc-audio",
-                "com.apple.coreaudio-format",
-                "public.audio",
-                "com.apple.quicktime-movie"
-            ],
-            "m4a": [
-                "public.mpeg-4-audio",
-                "com.apple.m4a-audio",
-                "public.audio",
-                "com.apple.quicktime-movie",
-                "public.mpeg-4"
-            ]
-        ]
-        
-        var successCount = 0
-        var failedFormats: [String] = []
-        
-        // Try to set for each format
-        for format in AudioFormat.allCases {
-            if let type = UTType(filenameExtension: format.rawValue) {
-                print("\nTrying to set default for .\(format.rawValue)")
-                
-                let currentHandler = LSCopyDefaultRoleHandlerForContentType(
-                    type.identifier as CFString,
-                    LSRolesMask.viewer
-                )?.takeRetainedValue() as String?
-                print("Current handler: \(currentHandler ?? "None")")
-                
-                var isSuccess = false
-                
-                if format.rawValue == "aiff" || format.rawValue == "m4a" {
-                    print("Forcing default app for .\(format.rawValue)")
-                    LSRegisterURL(Bundle.main.bundleURL as CFURL, true)
-                    
-                    if let types = forceTypes[format.rawValue] {
-                        for typeId in types {
-                            let status = LSSetDefaultRoleHandlerForContentType(
-                                typeId as CFString,
-                                LSRolesMask.all,
-                                Bundle.main.bundleIdentifier! as CFString
-                            )
-                            print("  Forced \(typeId): \(status == noErr ? "✓" : "✗")")
-                            
-                            if status != noErr, let forceType = UTType(typeId) {
-                                workspace.setDefaultApplication(
-                                    at: Bundle.main.bundleURL,
-                                    toOpen: forceType
-                                )
-                                print("  Tried NSWorkspace for \(typeId)")
-                            }
-                            
-                            if status == noErr {
-                                isSuccess = true
-                            }
-                        }
-                    }
-                } else {
-                    workspace.setDefaultApplication(
-                        at: Bundle.main.bundleURL,
-                        toOpen: type
-                    )
-                    isSuccess = true
-                }
-                
-                if let newHandler = LSCopyDefaultRoleHandlerForContentType(
-                    type.identifier as CFString,
-                    LSRolesMask.viewer
-                )?.takeRetainedValue() as String?,
-                   newHandler == Bundle.main.bundleIdentifier || isSuccess {
-                    successCount += 1
-                    print("✓ Successfully set as default")
-                    print("  New handler: \(newHandler)")
-                } else {
-                    failedFormats.append(format.rawValue)
-                    print("✗ Handler not set")
-                    print("  Current handler: \(currentHandler ?? "None")")
-                }
-            }
-        }
-        
-        print("\n=== Summary ===")
-        print("Total formats: \(AudioFormat.allCases.count)")
-        print("Successfully set: \(successCount)")
-        if !failedFormats.isEmpty {
-            print("Failed formats: \(failedFormats.joined(separator: ", "))")
-        }
-        print("===============================\n")
-        
-        if successCount == AudioFormat.allCases.count {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                isDefaultPlayerSet = true
-                Settings.shared.isDefaultPlayerSet = true
-                refreshTrigger.toggle()
-            }
-        }
+        .frame(height: isCompactMode ? 80 : 120)
     }
 }
 
-// Add hover effect modifier
-extension View {
-    func hover(_ handler: @escaping (Bool) -> Void) -> some View {
-        self.onHover { hovering in
-            handler(hovering)
-        }
-    }
-}
-
-struct NonDraggableView<Content: View>: View {
-    let content: Content
-    
-    init(@ViewBuilder content: () -> Content) {
-        self.content = content()
-    }
+// Переименовываем структуру
+private struct DefaultPlayerStatusView: View {
+    let isCompactMode: Bool
+    @State private var isDefaultPlayerSet = Settings.shared.isDefaultPlayerSet
+    @State private var refreshTrigger = false
+    @State private var isSuccess = false
     
     var body: some View {
-        content
-            .background(DisableDraggingView())
-    }
-}
-
-struct DisableDraggingView: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView {
-        let view = NonDraggableNSView()
-        return view
-    }
-    
-    func updateNSView(_ nsView: NSView, context: Context) {}
-}
-
-class NonDraggableNSView: NSView {
-    override init(frame frameRect: NSRect) {
-        super.init(frame: frameRect)
-        self.wantsLayer = true
-    }
-    
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        self.wantsLayer = true
-    }
-    
-    // Переопределяем этот метод, чтобы предотвратить перетаскивание
-    override var mouseDownCanMoveWindow: Bool {
-        return false
-    }
-    
-    // Перехватываем событие мыши, чтобы предотратить его распространение
-    override func mouseDown(with event: NSEvent) {
-        // Не передаем событие дальш
-    }
-}
-
-// Добавим вспомогательное расширение для условного применения модификаторов
-extension View {
-    @ViewBuilder
-    func `if`<Transform: View>(_ condition: Bool, transform: (Self) -> Transform) -> some View {
-        if condition {
-            transform(self)
-        } else {
-            self
-        }
-    }
-}
-
-// Добавляем FirstLaunchView как внутреннюю структуру
-private struct FirstLaunchView: View {
-    @Binding var isPresented: Bool
-    @StateObject private var themeManager = ThemeManager.shared
-    @State private var isSuccess: Bool = false
-    
-    var body: some View {
-        VStack(spacing: 0) {
-            // Title bar with title
-            HStack {
-                Spacer()
-                Text("Welcome to MIMP!")
-                    .font(.system(
-                        size: 13,
-                        weight: .medium,
-                        design: themeManager.isRetroMode ? .monospaced : .default
-                    ))
-                    .foregroundColor(Color.retroText)
-                Spacer()
-            }
-            .frame(height: 28)
-            
-            // Main content
-            HStack(spacing: 30) {
-                // Column 1 - App Icon
-                VStack(alignment: .center, spacing: 8) {
-                    if let appIcon = NSImage(named: "AppIcon") {
-                        Image(nsImage: appIcon)
-                            .resizable()
-                            .frame(width: 64, height: 64)
-                            .cornerRadius(themeManager.isRetroMode ? 0 : 15)
-                            .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
+        HStack(spacing: 6) {
+            switch getDefaultPlayerStatus() {
+            case .none:
+                Button(action: {
+                    setAsDefaultPlayer()
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "circle")
+                            .font(.system(size: isCompactMode ? 10 : 11))
+                            .foregroundColor(.white.opacity(0.7))
+                        Text("Set as default player")
+                            .font(.system(size: isCompactMode ? 10 : 11))
+                            .foregroundColor(.white.opacity(0.7))
                     }
                 }
-                .frame(width: 120)
-
-                // Column 2 - Description
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Would you like to set MIMP\nas the default player?")
-                        .font(.system(
-                            size: 11,
-                            design: themeManager.isRetroMode ? .monospaced : .default
-                        ))
-                        .foregroundColor(Color.retroText.opacity(0.8))
-                        .multilineTextAlignment(.leading)
-                }
-                .frame(width: 140, alignment: .leading)
-
-                // Column 3 - Formats
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(themeManager.isRetroMode ? 
-                        "Formats: [\(AudioFormat.formatsDescription)]" :
-                        "Formats: (\(AudioFormat.formatsDescription))")
-                        .font(.system(
-                            size: 11,
-                            design: themeManager.isRetroMode ? .monospaced : .default
-                        ))
-                        .foregroundColor(Color.retroText.opacity(0.7))
-                }
-                .frame(width: 120)
-
-                // Column 4 - Buttons and Status
-                VStack(alignment: .trailing, spacing: 6) {
-                    if isSuccess {
-                        Text("✓ Set as Default")
-                            .font(.system(
-                                size: 11,
-                                design: themeManager.isRetroMode ? .monospaced : .default
-                            ))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
+                .buttonStyle(.plain)
+                
+            case .partial:
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .font(.system(size: isCompactMode ? 10 : 11))
+                        .foregroundColor(.yellow)
+                    let unsetFormats = getUnsetFormats()
+                    Text("Not default for: \(unsetFormats.joined(separator: ", "))")
+                        .font(.system(size: isCompactMode ? 10 : 11))
+                    Button(action: {
+                        setAsDefaultPlayer()
+                    }) {
+                        Text("Fix")
+                            .font(.system(size: isCompactMode ? 10 : 11))
+                            .foregroundColor(.blue)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
                             .background(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(Color.green)
+                                RoundedRectangle(cornerRadius: 3)
+                                    .stroke(Color.blue, lineWidth: 1)
                             )
-                    } else {
-                        HStack(spacing: 8) {
-                            Button(action: {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                    isPresented = false
-                                    Settings.shared.isFirstLaunch = false
-                                }
-                            }) {
-                                Text("Maybe Later")
-                                    .font(.system(
-                                        size: 11,
-                                        design: themeManager.isRetroMode ? .monospaced : .default
-                                    ))
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .fill(Color.white.opacity(0.2))
-                                    )
-                            }
-                            .buttonStyle(.plain)
-                            .opacity(0.9)
-                            .hover { hovering in
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    if let button = NSApp.keyWindow?.contentView?.hitTest(NSEvent.mouseLocation)?.enclosingScrollView {
-                                        button.alphaValue = hovering ? 1 : 0.9
-                                    }
-                                }
-                            }
-
-                            Button(action: {
-                                setAsDefaultPlayer()
-                                withAnimation {
-                                    isSuccess = true
-                                }
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                        isPresented = false
-                                        Settings.shared.isFirstLaunch = false
-                                    }
-                                }
-                            }) {
-                                Text("Set as Default")
-                                    .font(.system(
-                                        size: 11,
-                                        design: themeManager.isRetroMode ? .monospaced : .default
-                                    ))
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .fill(Color.blue)
-                                    )
-                            }
-                            .buttonStyle(.plain)
-                            .contentShape(Rectangle())
-                            .opacity(0.9)
-                            .hover { hovering in
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    if let button = NSApp.keyWindow?.contentView?.hitTest(NSEvent.mouseLocation)?.enclosingScrollView {
-                                        button.alphaValue = hovering ? 1 : 0.9
-                                    }
-                                }
-                            }
-                        }
                     }
+                    .buttonStyle(.plain)
                 }
-                .frame(width: 260)
+                
+            case .complete:
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: isCompactMode ? 10 : 11))
+                        .foregroundColor(.green)
+                    Text("Set as default")
+                        .font(.system(size: isCompactMode ? 10 : 11))
+                        .foregroundColor(.white.opacity(0.7))
+                }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
         }
-        .frame(minWidth: 600, idealWidth: 800, maxWidth: .infinity, minHeight: 128, idealHeight: 128, maxHeight: 128)
-        .background(
-            VisualEffectView(
-                material: themeManager.isRetroMode ? .windowBackground : .hudWindow,
-                blendingMode: .behindWindow
-            )
-        )
+        .animation(.easeInOut(duration: 0.2), value: getDefaultPlayerStatus())
+        .animation(.easeInOut(duration: 0.2), value: refreshTrigger)
+    }
+    
+    private func getDefaultPlayerStatus() -> PlayerDefaultStatus {
+        let unsetFormats = getUnsetFormats()
+        if unsetFormats.isEmpty {
+            return .complete
+        } else if unsetFormats.count == AudioFormat.allCases.count {
+            return .none
+        } else {
+            return .partial
+        }
+    }
+    
+    private func getUnsetFormats() -> [String] {
+        var unsetFormats: [String] = []
+        for format in AudioFormat.allCases {
+            if let type = UTType(filenameExtension: format.rawValue),
+               let handler = LSCopyDefaultRoleHandlerForContentType(
+                type.identifier as CFString,
+                LSRolesMask.viewer
+               )?.takeRetainedValue() as String? {
+                if handler != Bundle.main.bundleIdentifier {
+                    unsetFormats.append(format.rawValue.uppercased())
+                }
+            } else {
+                unsetFormats.append(format.rawValue.uppercased())
+            }
+        }
+        return unsetFormats
     }
     
     private func setAsDefaultPlayer() {
@@ -1459,6 +1133,166 @@ private struct FirstLaunchView: View {
         
         if successCount > 0 {
             isSuccess = true
+            isDefaultPlayerSet = true
+            refreshTrigger.toggle()
+        }
+    }
+}
+
+// В FooterContent меняем использование
+private struct FooterContent: View {
+    @Binding var autoUpdateEnabled: Bool
+    @ObservedObject var updateManager: UpdateManager
+    let isCompactMode: Bool
+    
+    var body: some View {
+        HStack {
+            // Чекбокс автообновлений
+            Button(action: {
+                autoUpdateEnabled.toggle()
+                Settings.shared.autoUpdateEnabled = autoUpdateEnabled
+                if autoUpdateEnabled {
+                    Task {
+                        await updateManager.checkForUpdates(force: true)
+                    }
+                }
+            }) {
+                HStack(spacing: 6) {
+                    Image(systemName: autoUpdateEnabled ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: isCompactMode ? 10 : 11))
+                        .foregroundColor(autoUpdateEnabled ? .green : .white.opacity(0.7))
+                    Text("Automatic Updates")
+                        .font(.system(size: isCompactMode ? 10 : 11))
+                        .foregroundColor(.white.opacity(0.7))
+                }
+            }
+            .buttonStyle(.plain)
+            
+            Spacer()
+            
+            DefaultPlayerStatusView(isCompactMode: isCompactMode)
+        }
+    }
+}
+
+// Добавляем структуру NonDraggableView
+struct NonDraggableView<Content: View>: View {
+    let content: Content
+    
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+    
+    var body: some View {
+        content
+            .background(DisableDraggingView())
+    }
+}
+
+struct DisableDraggingView: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = NonDraggableNSView()
+        return view
+    }
+    
+    func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
+class NonDraggableNSView: NSView {
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        self.wantsLayer = true
+    }
+    
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        self.wantsLayer = true
+    }
+    
+    override var mouseDownCanMoveWindow: Bool {
+        return false
+    }
+    
+    override func mouseDown(with event: NSEvent) {
+        // Не передаем событие дальше
+    }
+}
+
+// Добавляем структуру FirstLaunchView
+struct FirstLaunchView: View {
+    @Binding var isPresented: Bool
+    @State private var isSuccess = false
+    let isCompactMode: Bool
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Title bar with title
+            HStack {
+                Spacer()
+                Text("Welcome to MIMP!")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.white)
+                Spacer()
+            }
+            .frame(height: 28)
+            
+            // Main content
+            HStack(spacing: isCompactMode ? 15 : 30) {
+                // Column 1 - App Icon
+                VStack(alignment: .center, spacing: 8) {
+                    if let appIcon = NSImage(named: "AppIcon") {
+                        Image(nsImage: appIcon)
+                            .resizable()
+                            .frame(width: isCompactMode ? 48 : 64, height: isCompactMode ? 48 : 64)
+                            .cornerRadius(15)
+                    }
+                }
+                .frame(width: isCompactMode ? 80 : 120)
+
+                // Column 2 - Description
+                VStack(alignment: .leading, spacing: isCompactMode ? 4 : 6) {
+                    Text("Would you like to set MIMP\nas the default player?")
+                        .font(.system(size: isCompactMode ? 10 : 11))
+                }
+                .frame(width: isCompactMode ? 120 : 140, alignment: .leading)
+
+                // Column 3 - Formats
+                VStack(alignment: .leading, spacing: isCompactMode ? 6 : 8) {
+                    Text("Formats: (\(AudioFormat.formatsDescription))")
+                        .font(.system(size: isCompactMode ? 10 : 11))
+                }
+                .frame(width: isCompactMode ? 100 : 120)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+        }
+        .frame(minWidth: 600, idealWidth: 800, maxWidth: .infinity, minHeight: 128, idealHeight: 128, maxHeight: 128)
+        .background(
+            VisualEffectView(
+                material: .hudWindow,
+                blendingMode: .behindWindow
+            )
+        )
+    }
+}
+
+// Добавляем расширение View дл hover эффекта
+extension View {
+    func hover(_ handler: @escaping (Bool) -> Void) -> some View {
+        self.onHover { hovering in
+            handler(hovering)
+        }
+    }
+}
+
+// Добавляем расширение для условного применения модификаторов
+extension View {
+    @ViewBuilder
+    func `if`<Transform: View>(_ condition: Bool, transform: (Self) -> Transform) -> some View {
+        if condition {
+            transform(self)
+        } else {
+            self
         }
     }
 }

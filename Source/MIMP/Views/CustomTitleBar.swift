@@ -5,10 +5,10 @@ struct CustomTitleBar: View {
     @ObservedObject private var updateManager = UpdateManager.shared
     @Binding var showingAbout: Bool
     let height: CGFloat = 28
-    @StateObject private var themeManager = ThemeManager.shared
     @State private var autoUpdateEnabled = Settings.shared.autoUpdateEnabled
     @State private var isInitialAppearance = true
     @State private var isWindowPinned = Settings.shared.isWindowPinned
+    @State private var isCompactMode = Settings.shared.isCompactMode
     
     var body: some View {
         ZStack {
@@ -17,11 +17,8 @@ struct CustomTitleBar: View {
                 if player.currentTrack != nil {
                     // Show track info
                     Text(titleText)
-                        .font(.system(
-                            size: 13,
-                            design: themeManager.isRetroMode ? .monospaced : .default
-                        ))
-                        .foregroundColor(Color.retroText)
+                        .font(.system(size: 13))
+                        .foregroundColor(.white)
                         .opacity(0.7)
                         .lineLimit(1)
                         .frame(width: geometry.size.width * 0.7, alignment: .center)
@@ -33,8 +30,10 @@ struct CustomTitleBar: View {
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
+                            .animation(.none, value: isCompactMode)
                         )
                         .opacity(player.isLoading ? 0 : 1)
+                        .animation(.none, value: isCompactMode)
                         .animation(.easeInOut(duration: 0.3), value: player.isLoading)
                         .background(WindowDraggingView())
                         .onTapGesture(count: 2) {
@@ -45,11 +44,8 @@ struct CustomTitleBar: View {
                 } else if !Settings.shared.launchedWithFile && !player.isLoading && !isInitialAppearance {
                     // Show app name only in drag-n-drop view and not on initial appearance
                     Text("Minimal Interface Music Player")
-                        .font(.system(
-                            size: 13,
-                            design: themeManager.isRetroMode ? .monospaced : .default
-                        ))
-                        .foregroundColor(Color.retroText)
+                        .font(.system(size: 13))
+                        .foregroundColor(.white)
                         .opacity(0.7)
                         .lineLimit(1)
                         .frame(width: geometry.size.width * 0.75, alignment: .center)
@@ -61,7 +57,9 @@ struct CustomTitleBar: View {
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
+                            .animation(.none, value: isCompactMode)
                         )
+                        .animation(.none, value: isCompactMode)
                         .background(WindowDraggingView())
                         .onTapGesture(count: 2) {
                             if let window = NSApp.mainWindow {
@@ -74,46 +72,60 @@ struct CustomTitleBar: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
+            .transaction { transaction in 
+                transaction.animation = nil  // Отключаем анимацию для фонового слоя
+            }
             
-            // Передний слой с кнопками
+            // Передний слой с копками
             HStack {
                 // Левая часть с кнопками
                 HStack(spacing: 8) {
                     // Кнопка закрытия
                     WindowButton(
-                        color: themeManager.isRetroMode ? .green : .red,
-                        symbol: "xmark",
-                        isRetroStyle: themeManager.isRetroMode,
-                        isPinButton: false
+                        color: .red,
+                        symbol: "xmark"
                     )
                     .help("Close")
                     .onTapGesture {
                         NSApplication.shared.terminate(nil)
                     }
                     
+                    // Кнопка компактного режима
+                    WindowButton(
+                        color: isCompactMode ? Color(red: 0.93, green: 0.73, blue: 0.0) : Color(red: 0.2, green: 0.8, blue: 0.2),
+                        symbol: isCompactMode ? "rectangle.compress.vertical" : "rectangle.expand.vertical"
+                    )
+                    .help(isCompactMode ? "Expand View" : "Compact View")
+                    .onTapGesture {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            isCompactMode.toggle()
+                            Settings.shared.isCompactMode = isCompactMode
+                        }
+                    }
+                    
                     // Кнопка About
                     WindowButton(
                         color: .gray, 
-                        symbol: "info.circle",
-                        isRetroStyle: themeManager.isRetroMode,
-                        isPinButton: false
+                        symbol: "info.circle"
                     )
                     .help("About")
                     .onTapGesture {
-                        showingAbout.toggle()
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            showingAbout.toggle()
+                        }
                     }
                     
                     // Кнопка обновления
                     if updateManager.isUpdateAvailable && autoUpdateEnabled {
                         WindowButton(
                             color: .blue,
-                            symbol: "arrow.triangle.2.circlepath",
-                            isRetroStyle: themeManager.isRetroMode,
-                            isPinButton: false
+                            symbol: "arrow.triangle.2.circlepath"
                         )
                         .help("Update Available")
                         .onTapGesture {
-                            updateManager.showingUpdate = true
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                updateManager.showingUpdate = true
+                            }
                         }
                     }
                 }
@@ -122,15 +134,11 @@ struct CustomTitleBar: View {
                 Spacer()
                 
                 // Правая часть с регулятором громкости и кнопкой закрепления окна
-                HStack(spacing: 4) {
+                HStack(spacing: 2) {
                     // Кнопка закрепления окна
                     WindowButton(
-                        color: isWindowPinned ? 
-                            (themeManager.isRetroMode ? Color.retroText : .blue) : 
-                            Color.retroText.opacity(0.5),
-                        symbol: isWindowPinned ? "pin.fill" : "pin",
-                        isRetroStyle: themeManager.isRetroMode,
-                        isPinButton: true
+                        color: isWindowPinned ? .blue : .white.opacity(0.5),
+                        symbol: isWindowPinned ? "pin.fill" : "pin.fill"
                     )
                     .help(isWindowPinned ? "Unpin Window" : "Pin Window")
                     .onTapGesture {
@@ -147,8 +155,16 @@ struct CustomTitleBar: View {
                 .padding(.trailing, 8)
                 .id("volumeControl")
             }
+            .transaction { transaction in
+                transaction.animation = nil  // Отключаем анимацию для кнопок
+            }
         }
         .frame(height: height)
+        .transaction { transaction in
+            transaction.animation = nil  // Отключаем анимацию для всего тайтлбара
+        }
+        .background(Color.clear)
+        .zIndex(100) // Гарантируем, что тайтлбар всегда поверх
         .onAppear {
             // Delay setting isInitialAppearance to false to avoid initial flash
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -177,39 +193,35 @@ struct CustomTitleBar: View {
 }
 
 struct WindowButton: View {
-    @StateObject private var themeManager = ThemeManager.shared
     let color: Color
     let symbol: String
     @State private var isHovered = false
-    let isRetroStyle: Bool
-    let isPinButton: Bool
     
     var body: some View {
         ZStack {
-            // Показываем фон только если это не кнопка булавки
-            if !isPinButton {
-                if isRetroStyle {
-                    Rectangle()
-                        .stroke(Color.retroText, lineWidth: 1)
-                        .frame(width: 12, height: 12)
-                } else {
-                    Circle()
-                        .fill(color.opacity(isHovered ? 1.0 : 0.8))
-                        .frame(width: 12, height: 12)
-                }
+            // Only show circle background for non-pin buttons
+            if !symbol.contains("pin") {
+                Circle()
+                    .fill(color.opacity(isHovered ? 1.0 : 0.8))
+                    .frame(width: 12, height: 12)
             }
             
-            // Показываем иконку только при наведении или если это булавка
-            if isHovered || symbol.contains("pin") {
+            // For pin button, show just the icon with color
+            if symbol.contains("pin") {
+                Image(systemName: symbol)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(color)
+                    .rotationEffect(.degrees(-45))
+                    .scaleEffect(x: -1, y: 1)
+            }
+            // For other buttons, show icon only on hover
+            else if isHovered {
                 Image(systemName: symbol)
                     .font(.system(size: 8, weight: .bold))
-                    .foregroundColor(isPinButton ? color : (isRetroStyle ? Color.retroText : Color.black.opacity(0.8)))
-                    // Наклоняем и отзеркаливаем иконку булавки, если это булавка
-                    .rotationEffect(symbol.contains("pin") ? .degrees(-45) : .degrees(0))
-                    .scaleEffect(x: symbol.contains("pin") ? -1 : 1, y: 1)
+                    .foregroundColor(color == .white ? color : .black.opacity(0.8))
             }
         }
-        .frame(width: 12, height: 12) // Фиксированный размер для всех кнопок
+        .frame(width: 12, height: 12)
         .onHover { hover in
             withAnimation(.easeInOut(duration: 0.1)) {
                 isHovered = hover

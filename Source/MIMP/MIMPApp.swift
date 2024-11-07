@@ -17,6 +17,7 @@ struct MIMPApp: App {
                 .preferredColorScheme(.dark)
                 .environmentObject(player)
                 .handlesExternalEvents(preferring: Set(["*"]), allowing: Set(["*"]))
+                .animation(.spring(response: 0.3, dampingFraction: 0.8), value: Settings.shared.isCompactMode)
                 .task { @MainActor in
                     // Restore playback state after update
                     if Settings.shared.wasUpdated,
@@ -48,7 +49,7 @@ struct MIMPApp: App {
                         if let visualEffect = window.contentView?.superview as? NSVisualEffectView {
                             visualEffect.wantsLayer = true
                             
-                            // Создаем background view для тени
+                            // Создаем background view для тени без анимации
                             let backgroundView = NSView(frame: visualEffect.bounds)
                             backgroundView.wantsLayer = true
                             backgroundView.layer?.backgroundColor = NSColor.clear.cgColor
@@ -59,25 +60,18 @@ struct MIMPApp: App {
                             backgroundView.layer?.shadowRadius = 12
                             backgroundView.layer?.masksToBounds = false
                             
+                            // Отключаем анимации для изменений layer
+                            CATransaction.begin()
+                            CATransaction.setDisableActions(true)
+                            
                             // Добавляем background view под visualEffect
                             if let superView = visualEffect.superview {
                                 superView.addSubview(backgroundView, positioned: .below, relativeTo: visualEffect)
-                                
-                                // Обновляем frame при изменении размера окна
-                                NotificationCenter.default.addObserver(
-                                    forName: NSView.frameDidChangeNotification,
-                                    object: visualEffect,
-                                    queue: .main
-                                ) { [weak backgroundView, weak visualEffect] notification in
-                                    Task { @MainActor in
-                                        guard let backgroundView = backgroundView,
-                                              let visualEffect = visualEffect else { return }
-                                        backgroundView.frame = visualEffect.frame
-                                    }
-                                }
                             }
                             
-                            // Настраиваем visualEffect
+                            CATransaction.commit()
+                            
+                            // Настраиваем visualEffect без анимаций
                             visualEffect.material = .windowBackground
                             visualEffect.state = .active
                             visualEffect.isEmphasized = false
@@ -111,61 +105,84 @@ struct MIMPApp: App {
 }
 
 extension NSWindow {
+    static var lastWindowPositionX: CGFloat?
+    
     func set(titlebarColor: NSColor) {
         guard let titlebarView = standardWindowButton(.closeButton)?.superview?.superview else { return }
         titlebarView.wantsLayer = true
         titlebarView.layer?.backgroundColor = titlebarColor.cgColor
     }
 
-    @objc func toggleExpand() {
+    func toggleExpand() {
         let screen = NSScreen.main?.visibleFrame ?? .zero
         let currentFrame = self.frame
         
         if currentFrame.width < screen.width - 20 {
-            // Expand the window to full screen width
+            // Сохраняем текущую позицию
+            NSWindow.lastWindowPositionX = currentFrame.minX
+            
+            // Рассчитываем новую позицию и размер
+            let newWidth = screen.width
             let newFrame = NSRect(
                 x: screen.minX,
                 y: currentFrame.minY,
-                width: screen.width,
+                width: newWidth,
                 height: currentFrame.height
             )
-            Settings.shared.isWindowExpanded = true
             
-            // Remove corner radius
-            self.contentView?.layer?.cornerRadius = 0
-            if let visualEffect = self.contentView?.superview as? NSVisualEffectView {
-                visualEffect.layer?.cornerRadius = 0
-                if let backgroundView = visualEffect.superview?.subviews.first(where: { $0 != visualEffect }) {
-                    backgroundView.layer?.cornerRadius = 0
+            // Настраиваем анимацию в стиле macOS
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.3
+                context.timingFunction = CAMediaTimingFunction(controlPoints: 0.16, 1, 0.3, 1) // Стиль macOS
+                context.allowsImplicitAnimation = false
+                
+                // Обновляем UI
+                Settings.shared.isWindowExpanded = true
+                self.contentView?.layer?.cornerRadius = 0
+                if let visualEffect = self.contentView?.superview as? NSVisualEffectView {
+                    visualEffect.layer?.cornerRadius = 0
+                    if let backgroundView = visualEffect.superview?.subviews.first(where: { $0 != visualEffect }) {
+                        backgroundView.layer?.cornerRadius = 0
+                    }
                 }
+                
+                // Анимируем изменение размера
+                self.animator().setFrame(newFrame, display: true)
             }
-            
-            self.setFrame(newFrame, display: true, animate: true)
         } else {
             restoreToStandardSize()
         }
     }
     
     func restoreToStandardSize() {
-        let screen = NSScreen.main?.visibleFrame ?? .zero
+        let standardWidth: CGFloat = 800
         let newFrame = NSRect(
-            x: screen.midX - 400,
+            x: NSWindow.lastWindowPositionX ?? self.frame.minX,
             y: self.frame.minY,
-            width: 800,
+            width: standardWidth,
             height: self.frame.height
         )
-        Settings.shared.isWindowExpanded = false
         
-        // Restore corner radius
-        self.contentView?.layer?.cornerRadius = 10
-        if let visualEffect = self.contentView?.superview as? NSVisualEffectView {
-            visualEffect.layer?.cornerRadius = 10
-            if let backgroundView = visualEffect.superview?.subviews.first(where: { $0 != visualEffect }) {
-                backgroundView.layer?.cornerRadius = 10
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.3
+            context.timingFunction = CAMediaTimingFunction(controlPoints: 0.16, 1, 0.3, 1) // Стиль macOS
+            context.allowsImplicitAnimation = false
+            
+            // Обновляем UI
+            Settings.shared.isWindowExpanded = false
+            self.contentView?.layer?.cornerRadius = 10
+            if let visualEffect = self.contentView?.superview as? NSVisualEffectView {
+                visualEffect.layer?.cornerRadius = 10
+                if let backgroundView = visualEffect.superview?.subviews.first(where: { $0 != visualEffect }) {
+                    backgroundView.layer?.cornerRadius = 10
+                }
             }
+            
+            // Анимируем изменение размера
+            self.animator().setFrame(newFrame, display: true)
         }
         
-        self.setFrame(newFrame, display: true, animate: true)
+        NSWindow.lastWindowPositionX = nil
     }
 }
 

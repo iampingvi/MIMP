@@ -11,10 +11,6 @@ struct WaveformView: View {
     @State private var hoveredX: CGFloat?
     @State private var error: Error?
     
-    @StateObject private var themeManager = ThemeManager.shared
-    
-    @State private var animatedProgress: CGFloat = 0
-    
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
@@ -25,7 +21,7 @@ struct WaveformView: View {
                         let height = size.height
                         let middle = height / 2
                         let pointSpacing = width / CGFloat(waveformSamples.count)
-                        let progressWidth = width * animatedProgress
+                        let progressWidth = width * CGFloat(currentTime / duration)
                         let barWidth = max(1.5, pointSpacing - 1)
                         let barSpacing = max(0.5, (pointSpacing - barWidth) / 2)
                         let maxAmplitude = height / 2.2
@@ -69,10 +65,7 @@ struct WaveformView: View {
                                 height: bottomAmplitude
                             ))
                             
-                            let backgroundColor = themeManager.isRetroMode ? 
-                                Color.green.opacity(0.3 + Double(sample) * 0.4) :
-                                Color.white.opacity(0.3 + Double(sample) * 0.4)
-                            context.fill(backgroundPath, with: .color(backgroundColor))
+                            context.fill(backgroundPath, with: .color(Color.white.opacity(0.3 + Double(sample) * 0.4)))
                             
                             // Draw filled part
                             if fillProgress > 0 {
@@ -90,10 +83,7 @@ struct WaveformView: View {
                                     height: bottomAmplitude
                                 ))
                                 
-                                let filledColor = themeManager.isRetroMode ? 
-                                    Color.green.opacity(0.6 + Double(sample) * 0.4) :
-                                    Color.accentColor.opacity(0.6 + Double(sample) * 0.4)
-                                context.fill(filledPath, with: .color(filledColor))
+                                context.fill(filledPath, with: .color(Color.accentColor.opacity(0.6 + Double(sample) * 0.4)))
                             }
                         }
                     }
@@ -105,10 +95,10 @@ struct WaveformView: View {
                     
                     VStack(spacing: 0) {
                         Rectangle()
-                            .fill(Color.retroAccent.opacity(0.5))
+                            .fill(Color.accentColor.opacity(0.8))
                             .frame(width: barWidth, height: amplitudes.top)
                         Rectangle()
-                            .fill(Color.retroAccent.opacity(0.5))
+                            .fill(Color.accentColor.opacity(0.8))
                             .frame(width: barWidth, height: amplitudes.bottom)
                     }
                     .position(x: progressPosition, y: geometry.size.height / 2)
@@ -143,13 +133,7 @@ struct WaveformView: View {
                         }
                     }
             )
-            .onChange(of: currentTime) { newTime in
-                withAnimation(.linear(duration: 0.1)) {
-                    animatedProgress = CGFloat(newTime / duration)
-                }
-            }
             .onAppear {
-                animatedProgress = CGFloat(currentTime / duration)
                 loadWaveform()
             }
         }

@@ -18,6 +18,7 @@ class Settings {
     private let lastTrackPositionKey = "player.lastTrackPosition"
     private let lastTrackWasPlayingKey = "player.lastTrackWasPlaying"
     private let wasUpdatedKey = "app.wasUpdated"
+    private let isCompactModeKey = "window.isCompactMode"
     
     var volume: Float {
         get { Float(defaults.double(forKey: volumeKey)) }
@@ -96,6 +97,11 @@ class Settings {
         set { defaults.set(newValue, forKey: wasUpdatedKey) }
     }
     
+    var isCompactMode: Bool {
+        get { defaults.bool(forKey: isCompactModeKey) }
+        set { defaults.set(newValue, forKey: isCompactModeKey) }
+    }
+    
     private init() {
         // Временно раскомментируйте эту строку для тестирования:
 //          defaults.removeObject(forKey: isFirstLaunchKey)
@@ -138,6 +144,9 @@ class Settings {
         }
         if defaults.object(forKey: wasUpdatedKey) == nil {
             defaults.set(false, forKey: wasUpdatedKey)
+        }
+        if defaults.object(forKey: isCompactModeKey) == nil {
+            defaults.set(false, forKey: isCompactModeKey)
         }
     }
 } 

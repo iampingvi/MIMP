@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 private struct ChangelogSection: Identifiable {
     let id = UUID()
@@ -8,7 +9,7 @@ private struct ChangelogSection: Identifiable {
 
 struct UpdateView: View {
     @ObservedObject private var updateManager = UpdateManager.shared
-    @StateObject private var themeManager = ThemeManager.shared
+    @State private var isCompactMode = Settings.shared.isCompactMode
     
     private func parseChangelog() -> [ChangelogSection] {
         guard let changelog = updateManager.changelog else { return [] }
@@ -16,15 +17,15 @@ struct UpdateView: View {
         // Ищем строку с Release
         if let releaseRange = changelog.range(of: "Release") {
             // Берем все после Release
-            let changes = changelog[releaseRange.upperBound...].trimmingCharacters(in: .whitespacesAndNewlines)
+            let changes = changelog[releaseRange.upperBound...].trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
             
             var sections: [ChangelogSection] = []
             var currentTitle = ""
             var currentItems: [String] = []
             
             // Разбираем по строкам
-            changes.components(separatedBy: .newlines).forEach { line in
-                let trimmed = line.trimmingCharacters(in: .whitespaces)
+            changes.components(separatedBy: CharacterSet.newlines).forEach { line in
+                let trimmed = line.trimmingCharacters(in: CharacterSet.whitespaces)
                 if trimmed.hasPrefix("###") {
                     // Сохраняем предыдущую секцию
                     if !currentTitle.isEmpty && !currentItems.isEmpty {
@@ -49,84 +50,59 @@ struct UpdateView: View {
         return []
     }
     
+    private func sectionView(_ section: ChangelogSection, alignment: HorizontalAlignment = .leading) -> some View {
+        VStack(alignment: alignment, spacing: isCompactMode ? 1 : 4) {
+            Text(section.title)
+                .font(.system(size: isCompactMode ? 11 : 12, weight: .bold))
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity, alignment: alignment == .leading ? .leading : .trailing)
+                .frame(height: 16)
+                .padding(.top, isCompactMode ? 6 : 10)
+            
+            ForEach(section.items, id: \.self) { item in
+                Text("• " + item)
+                    .font(.system(size: isCompactMode ? 10 : 11))
+                    .foregroundColor(.white.opacity(0.7))
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: alignment == .leading ? .leading : .trailing)
+            }
+            
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, alignment: alignment == .leading ? .leading : .trailing)
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
-            // Title bar
-            HStack {
-                Spacer()
-            Text("What's New in \(updateManager.latestVersion ?? "")")
-                    .font(.system(
-                        size: 13,
-                        weight: .medium,
-                        design: themeManager.isRetroMode ? .monospaced : .default
-                    ))
-                    .foregroundColor(Color.retroText)
-                Spacer()
-            }
-            .frame(height: 28)
-            
             // Main content
             HStack(spacing: 15) {
-                // Changelog content
                 let sections = parseChangelog()
                 
-                HStack(alignment: .top, spacing: 20) {
-                    ForEach(sections) { section in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(section.title)
-                                .font(.system(
-                                    size: 12,
-                                    weight: .bold,
-                                    design: themeManager.isRetroMode ? .monospaced : .default
-                                ))
-                                .foregroundColor(Color.retroText)
-                            
-                            ForEach(section.items, id: \.self) { item in
-                                Text("• " + item)
-                                    .font(.system(
-                                        size: 11,
-                                        design: themeManager.isRetroMode ? .monospaced : .default
-                                    ))
-                                    .foregroundColor(Color.retroText.opacity(0.7))
-                                    .lineLimit(1)
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                if sections.count > 0 {
+                    // Left column
+                    if let firstSection = sections.first {
+                        sectionView(firstSection, alignment: .trailing)
                     }
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 15)
-                .transition(.move(edge: .top).combined(with: .opacity))
-                
-                // Buttons
-                VStack(alignment: .trailing, spacing: 6) {
-                    if updateManager.downloadProgress > 0 {
-                        ProgressView(value: updateManager.downloadProgress)
-                            .progressViewStyle(.linear)
-                            .frame(width: 100)
-                    } else {
-                        HStack(spacing: 8) {
-                            Button(action: {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                    updateManager.showingUpdate = false
-                                }
-                            }) {
-                                if themeManager.isRetroMode {
+                    
+                    // Center column with version and buttons
+                    VStack(spacing: 12) {
+                        Text("What's New in \(updateManager.latestVersion ?? "")")
+                            .font(.system(size: isCompactMode ? 12 : 13, weight: .medium))
+                            .foregroundColor(.white)
+                        
+                        if updateManager.downloadProgress > 0 {
+                            ProgressView(value: updateManager.downloadProgress)
+                                .progressViewStyle(.linear)
+                                .frame(width: 100)
+                        } else {
+                            HStack(spacing: 8) {
+                                Button(action: {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                        updateManager.showingUpdate = false
+                                    }
+                                }) {
                                     Text("Skip")
-                                        .font(.system(
-                                            size: 11,
-                                            design: .monospaced
-                                        ))
-                                        .foregroundColor(Color.retroText)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
-                                        .background(
-                                            Rectangle()
-                                                .stroke(Color.retroText.opacity(0.7), lineWidth: 1)
-                                        )
-                                } else {
-                                    Text("Skip")
-                                        .font(.system(size: 11))
+                                        .font(.system(size: isCompactMode ? 10 : 11))
                                         .foregroundColor(.white)
                                         .padding(.horizontal, 12)
                                         .padding(.vertical, 6)
@@ -135,30 +111,15 @@ struct UpdateView: View {
                                                 .fill(Color.white.opacity(0.2))
                                         )
                                 }
-                            }
-                            .buttonStyle(.plain)
-                            
-                            Button(action: {
-                                Task {
-                                    try? await updateManager.downloadAndInstallUpdate()
-                                }
-                            }) {
-                                if themeManager.isRetroMode {
+                                .buttonStyle(.plain)
+                                
+                                Button(action: {
+                                    Task {
+                                        try? await updateManager.downloadAndInstallUpdate()
+                                    }
+                                }) {
                                     Text("Update")
-                                        .font(.system(
-                                            size: 11,
-                                            design: .monospaced
-                                        ))
-                                        .foregroundColor(Color.retroText)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
-                                        .background(
-                                            Rectangle()
-                                                .stroke(Color.retroText.opacity(0.7), lineWidth: 1)
-                                        )
-                                } else {
-                                    Text("Update")
-                                        .font(.system(size: 11))
+                                        .font(.system(size: isCompactMode ? 10 : 11))
                                         .foregroundColor(.white)
                                         .padding(.horizontal, 12)
                                         .padding(.vertical, 6)
@@ -167,23 +128,40 @@ struct UpdateView: View {
                                                 .fill(Color.blue)
                                         )
                                 }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
                         }
                     }
+                    .frame(width: 160)
+                    
+                    // Right column
+                    if sections.count > 1 {
+                        sectionView(sections[1], alignment: .leading)
+                    }
                 }
-                .frame(width: 160)
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.vertical, isCompactMode ? 4 : 8)
         }
-        .frame(minWidth: 600, idealWidth: 800, maxWidth: .infinity, minHeight: 128, idealHeight: 128, maxHeight: 128)
+        .frame(
+            minWidth: 600, 
+            idealWidth: 800, 
+            maxWidth: .infinity, 
+            minHeight: isCompactMode ? 100 : 128,
+            idealHeight: isCompactMode ? 100 : 128,
+            maxHeight: isCompactMode ? 100 : 128
+        )
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isCompactMode)
         .background(
             VisualEffectView(
-                material: themeManager.isRetroMode ? .windowBackground : .hudWindow,
+                material: .hudWindow,
                 blendingMode: .behindWindow
             )
         )
-        .transition(.move(edge: .top))
+        .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                isCompactMode = Settings.shared.isCompactMode
+            }
+        }
     }
 } 

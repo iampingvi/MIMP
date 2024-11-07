@@ -36,13 +36,9 @@ struct AudioInfo {
                     Image(systemName: icon)
                         .font(.system(size: 10))
                     Text(text)
-                        .font(.system(
-                            size: 10,
-                            weight: .medium,
-                            design: ThemeManager.shared.isRetroMode ? .monospaced : .default
-                        ))
+                        .font(.system(size: 10, weight: .medium))
                 }
-                .foregroundColor(Color.retroText.opacity(0.7))
+                .foregroundColor(.white.opacity(0.7))
             }
         }
         .padding(.vertical, 4)
