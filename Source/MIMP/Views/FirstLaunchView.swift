@@ -7,6 +7,7 @@ import AppKit
 struct FirstLaunchView: View {
     @Binding var isPresented: Bool
     @State private var isSuccess = false
+    @State private var autoUpdateEnabled = true
     
     var body: some View {
         VStack(spacing: 0) {
@@ -19,9 +20,9 @@ struct FirstLaunchView: View {
             }
             .frame(height: 28)
             
-            HStack(spacing: 30) {
+            HStack(spacing: 20) {
                 // Column 1 - App Icon
-                VStack(alignment: .center, spacing: 8) {
+                VStack(alignment: .center) {
                     if let appIcon = NSImage(named: "AppIcon") {
                         Image(nsImage: appIcon)
                             .resizable()
@@ -29,28 +30,47 @@ struct FirstLaunchView: View {
                             .cornerRadius(15)
                     }
                 }
-                .frame(width: 120)
+                .frame(width: 80)
 
-                // Column 2 - Description
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Would you like to set MIMP\nas the default player?")
+                // Column 2 - Description and Settings
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Would you like to set MIMP as your default music player?")
+                        .font(.system(size: 12))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    Text("Supported formats: \(AudioFormat.formatsDescription)")
                         .font(.system(size: 11))
+                        .foregroundColor(.white.opacity(0.7))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    // Auto-update checkbox
+                    Button(action: {
+                        autoUpdateEnabled.toggle()
+                        Settings.shared.autoUpdateEnabled = autoUpdateEnabled
+                        print("Auto-update is now \(autoUpdateEnabled ? "enabled" : "disabled")")
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: autoUpdateEnabled ? "checkmark.circle.fill" : "circle")
+                                .font(.system(size: 11))
+                                .foregroundColor(autoUpdateEnabled ? .green : .white.opacity(0.7))
+                            Text("Enable automatic updates")
+                                .font(.system(size: 11))
+                                .foregroundColor(.white.opacity(0.7))
+                        }
+                    }
+                    .buttonStyle(.plain)
                 }
-                .frame(width: 140, alignment: .leading)
-
-                // Column 3 - Formats
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Formats: (\(AudioFormat.formatsDescription))")
-                        .font(.system(size: 11))
-                }
-                .frame(width: 120)
+                .frame(width: 460)
                 
                 // Buttons
-                VStack(spacing: 8) {
+                VStack(spacing: 12) {
                     Button(action: {
                         Task {
                             do {
                                 try await setAsDefaultPlayer()
+                                Settings.shared.autoUpdateEnabled = autoUpdateEnabled
+                                print("Saving auto-update setting: \(autoUpdateEnabled)")
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                                     isPresented = false
                                     Settings.shared.isFirstLaunch = false
@@ -61,27 +81,30 @@ struct FirstLaunchView: View {
                         }
                     }) {
                         Text("Set as Default")
-                            .font(.system(size: 11))
+                            .font(.system(size: 12))
                             .foregroundColor(.white)
-                            .padding(.horizontal, 12)
+                            .frame(width: 120)
                             .padding(.vertical, 6)
                             .background(Color.blue)
-                            .cornerRadius(4)
+                            .cornerRadius(6)
                     }
                     .buttonStyle(.plain)
                     
                     Button(action: {
+                        Settings.shared.autoUpdateEnabled = autoUpdateEnabled
+                        print("Skipped. Saving auto-update setting: \(autoUpdateEnabled)")
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                             isPresented = false
                             Settings.shared.isFirstLaunch = false
                         }
                     }) {
                         Text("Skip")
-                            .font(.system(size: 11))
+                            .font(.system(size: 12))
                             .foregroundColor(.white.opacity(0.7))
                     }
                     .buttonStyle(.plain)
                 }
+                .frame(width: 120)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)

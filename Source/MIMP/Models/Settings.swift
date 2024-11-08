@@ -104,7 +104,7 @@ class Settings {
     
     private init() {
         // Uncomment the following line temporarily for testing first launch behavior:
-        // defaults.removeObject(forKey: isFirstLaunchKey)
+        //  defaults.removeObject(forKey: isFirstLaunchKey)
         
         if defaults.object(forKey: isFirstLaunchKey) == nil {
             defaults.set(true, forKey: isFirstLaunchKey)
