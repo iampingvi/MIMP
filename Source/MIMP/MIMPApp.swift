@@ -26,10 +26,13 @@ struct MIMPApp: App {
                         let position = Settings.shared.lastTrackPosition
                         
                         Task {
-                            try? await player.load(url: lastTrackURL)
-                            try? await player.seek(to: position)
-                            if wasPlaying {
-                                player.play()
+                            do {
+                                try await player.load(url: lastTrackURL)
+                                if wasPlaying {
+                                    player.play()
+                                }
+                            } catch {
+                                print("Failed to restore playback:", error)
                             }
                         }
                         

@@ -161,7 +161,7 @@ struct CustomTitleBar: View {
         }
         .frame(height: height)
         .transaction { transaction in
-            transaction.animation = nil  // Отключаем анимацию для всего тайтлбара
+            transaction.animation = nil  // Отклюаем анимацию для всего тайтлбара
         }
         .background(Color.clear)
         .zIndex(100) // Гарантируем, что тайтлбар всегда поверх
@@ -175,6 +175,18 @@ struct CustomTitleBar: View {
             if let window = NSApp.mainWindow {
                 window.level = isWindowPinned ? .floating : .normal
             }
+            
+            // Добавляем передачу привязок в HotKeys
+            HotKeys.shared.setWindowBindings(
+                isCompactMode: Binding(
+                    get: { self.isCompactMode },
+                    set: { self.isCompactMode = $0 }
+                ),
+                isWindowPinned: Binding(
+                    get: { self.isWindowPinned },
+                    set: { self.isWindowPinned = $0 }
+                )
+            )
         }
         .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
             autoUpdateEnabled = Settings.shared.autoUpdateEnabled
