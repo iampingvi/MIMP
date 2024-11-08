@@ -74,74 +74,77 @@ struct UpdateView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Main content
-            HStack(spacing: 15) {
-                let sections = parseChangelog()
-                
-                if sections.count > 0 {
-                    // Left column
-                    if let firstSection = sections.first {
-                        sectionView(firstSection, alignment: .trailing)
-                    }
+            // Добавляем проверку наличия обновления
+            if updateManager.isUpdateAvailable {
+                // Main content
+                HStack(spacing: 15) {
+                    let sections = parseChangelog()
                     
-                    // Center column with version and buttons
-                    VStack(spacing: 12) {
-                        Text("What's New in \(updateManager.latestVersion ?? "")")
-                            .font(.system(size: isCompactMode ? 12 : 13, weight: .medium))
-                            .foregroundColor(.white)
+                    if sections.count > 0 {
+                        // Left column
+                        if let firstSection = sections.first {
+                            sectionView(firstSection, alignment: .trailing)
+                        }
                         
-                        if updateManager.downloadProgress > 0 {
-                            ProgressView(value: updateManager.downloadProgress)
-                                .progressViewStyle(.linear)
-                                .frame(width: 100)
-                        } else {
-                            HStack(spacing: 8) {
-                                Button(action: {
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                        updateManager.showingUpdate = false
+                        // Center column with version and buttons
+                        VStack(spacing: 12) {
+                            Text("What's New in \(updateManager.latestVersion ?? "")")
+                                .font(.system(size: isCompactMode ? 12 : 13, weight: .medium))
+                                .foregroundColor(.white)
+                            
+                            if updateManager.downloadProgress > 0 {
+                                ProgressView(value: updateManager.downloadProgress)
+                                    .progressViewStyle(.linear)
+                                    .frame(width: 100)
+                            } else {
+                                HStack(spacing: 8) {
+                                    Button(action: {
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                            updateManager.showingUpdate = false
+                                        }
+                                    }) {
+                                        Text("Skip")
+                                            .font(.system(size: isCompactMode ? 10 : 11))
+                                            .foregroundColor(.white)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 6)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 6)
+                                                    .fill(Color.white.opacity(0.2))
+                                            )
                                     }
-                                }) {
-                                    Text("Skip")
-                                        .font(.system(size: isCompactMode ? 10 : 11))
-                                        .foregroundColor(.white)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 6)
-                                                .fill(Color.white.opacity(0.2))
-                                        )
-                                }
-                                .buttonStyle(.plain)
-                                
-                                Button(action: {
-                                    Task {
-                                        try? await updateManager.downloadAndInstallUpdate()
+                                    .buttonStyle(.plain)
+                                    
+                                    Button(action: {
+                                        Task {
+                                            try? await updateManager.downloadAndInstallUpdate()
+                                        }
+                                    }) {
+                                        Text("Update")
+                                            .font(.system(size: isCompactMode ? 10 : 11))
+                                            .foregroundColor(.white)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 6)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 6)
+                                                    .fill(Color.blue)
+                                            )
                                     }
-                                }) {
-                                    Text("Update")
-                                        .font(.system(size: isCompactMode ? 10 : 11))
-                                        .foregroundColor(.white)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 6)
-                                                .fill(Color.blue)
-                                        )
+                                    .buttonStyle(.plain)
                                 }
-                                .buttonStyle(.plain)
                             }
                         }
-                    }
-                    .frame(width: 160)
-                    
-                    // Right column
-                    if sections.count > 1 {
-                        sectionView(sections[1], alignment: .leading)
+                        .frame(width: 160)
+                        
+                        // Right column
+                        if sections.count > 1 {
+                            sectionView(sections[1], alignment: .leading)
+                        }
                     }
                 }
+                .padding(.horizontal, 12)
+                .padding(.vertical, isCompactMode ? 4 : 8)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, isCompactMode ? 4 : 8)
         }
         .frame(
             minWidth: 600, 

@@ -69,8 +69,15 @@ class HotKeys {
                         if self.showingAbout?.wrappedValue == true {
                             self.showingAbout?.wrappedValue = false
                         }
-                        // Переключаем окно Update только если есть обновления
-                        self.updateManager?.toggleUpdateWindow()
+                        // Проверяем наличие обновления перед переключением окна
+                        if self.updateManager?.isUpdateAvailable == true {
+                            self.updateManager?.toggleUpdateWindow()
+                        } else {
+                            // Опционально: можно добавить принудительную проверку обновлений
+                            Task {
+                                await self.updateManager?.checkForUpdates(force: true)
+                            }
+                        }
                     }
                     return nil
                     

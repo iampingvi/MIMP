@@ -75,14 +75,13 @@ class UpdateManager: NSObject, ObservableObject {
                 changelog = release.body
                 isUpdateAvailable = true
                 
-                // Показываем окно обновления только если приложение не было запущено через файл
+                // Удаляем проверку Settings.shared.launchedWithFile
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                    showingUpdate = true
+                    showingUpdate = !force // Показываем окно только если это не принудительная проверка
                 }
-                print("Launched with file: \(Settings.shared.launchedWithFile)")
-                print("Showing update window: \(showingUpdate)")
             } else {
                 print("No update needed")
+                isUpdateAvailable = false
             }
         } catch {
             print("Update check failed with error: \(error)")
@@ -267,7 +266,7 @@ class UpdateManager: NSObject, ObservableObject {
     }
     
     func toggleUpdateWindow() {
-        // Only toggle if there's an update available
+        // Изменяем логику переключения окна
         if isUpdateAvailable {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                 showingUpdate.toggle()
