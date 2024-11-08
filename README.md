@@ -14,6 +14,7 @@ That's why I created MIMP - a minimalistic music player specifically designed fo
 
 - **Streamlined Music Preview**: Fast and efficient way to preview multiple tracks
 - **Visual Waveform Display**: Quickly identify track structure, drops, and breakdowns
+- **Audio Information Display**: View bitrate, sample rate, and channel information
 - **Format Support**: Compatible with all major DJ-friendly formats:
   - MP3
   - AIFF
@@ -22,12 +23,20 @@ That's why I created MIMP - a minimalistic music player specifically designed fo
   - M4A
 - **Minimalistic Interface**: Focus on what matters - the music
 - **Native Performance**: Built specifically for Apple Silicon Macs (compatible with Intel Macs)
+- **Auto-Updates**: Built-in updater to keep your app current
+- **Compact Mode**: Streamlined view for minimal screen space usage
 
 ## Controls 
 
-- Double-click on title: Expands the application to full width
-- Play/Pause: Use Space bar or the media control button (F8)
-
+- **Space bar / F8**: Play/Pause
+- **Double-click on title**: Expands the application to full width
+- **Cmd + Q**: Quit application
+- **Cmd + H**: Hide application
+- **M key**: Mute/Unmute
+- **P key**: Keep window always on top
+- **C key**: Enter compact mode
+- **I key**: Open About
+- **U key**: Open Updater (if available)
 
 ## Technical Details
 
@@ -37,11 +46,16 @@ That's why I created MIMP - a minimalistic music player specifically designed fo
 - Swift 5.5+
 - Apple Silicon Mac (Intel Mac compatible)
 
+### Additional Features
+- Remaining time display
+- Set as default player option
+- Auto-updater with version checking
+- Audio format details display
+- Compact mode for minimal interface
 
 ## Credits
 
 - Developed with the assistance of Claude 3.5 Sonnet
-- Code comments generated using AI Mistral
 - Custom application icon designed by myself :P
 
 ### P.S.
