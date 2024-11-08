@@ -69,8 +69,8 @@ class HotKeys {
                         if self.showingAbout?.wrappedValue == true {
                             self.showingAbout?.wrappedValue = false
                         }
-                        // Переключаем окно Update
-                        self.updateManager?.showingUpdate.toggle()
+                        // Переключаем окно Update только если есть обновления
+                        self.updateManager?.toggleUpdateWindow()
                     }
                     return nil
                     

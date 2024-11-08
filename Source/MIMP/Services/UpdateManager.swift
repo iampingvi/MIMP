@@ -265,6 +265,15 @@ class UpdateManager: NSObject, ObservableObject {
     deinit {
         progressObservation?.invalidate()
     }
+    
+    func toggleUpdateWindow() {
+        // Only toggle if there's an update available
+        if isUpdateAvailable {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                showingUpdate.toggle()
+            }
+        }
+    }
 }
 
 struct GithubRelease: Codable {
