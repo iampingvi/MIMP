@@ -38,6 +38,8 @@ final class AudioPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
 
     private var cleanupFlag = false
 
+    @Published private(set) var isStopped: Bool = true
+
     override init() {
         let settings = Settings.shared
         self.volume = settings.volume
@@ -383,6 +385,7 @@ final class AudioPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
     func play() {
         player?.play()
         isPlaying = true
+        isStopped = false
         startTimer()
         updateNowPlaying()
     }
@@ -495,6 +498,16 @@ final class AudioPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
             // Update Now Playing info
             self.updateNowPlaying()
         }
+    }
+
+    func stop() {
+        player?.stop()
+        player?.currentTime = 0
+        currentTime = 0
+        isPlaying = false
+        isStopped = true
+        stopTimer()
+        updateNowPlaying()
     }
 }
 

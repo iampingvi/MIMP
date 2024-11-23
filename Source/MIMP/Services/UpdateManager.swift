@@ -99,16 +99,17 @@ class UpdateManager: NSObject, ObservableObject {
         
         print("Comparing versions: \(v1Components) > \(v2Components)")
         
+        // Сравниваем каждый компонент версии как число
         for i in 0..<min(v1Components.count, v2Components.count) {
-            if let num1 = Int(v1Components[i]), let num2 = Int(v2Components[i]) {
-                if num1 > num2 {
-                    return true
-                } else if num1 < num2 {
-                    return false
-                }
+            guard let num1 = Int(v1Components[i]),
+                  let num2 = Int(v2Components[i]) else { continue }
+            
+            if num1 != num2 {
+                return num1 > num2
             }
         }
         
+        // Если все компоненты равны, более длинная версия считается большей
         return v1Components.count > v2Components.count
     }
     

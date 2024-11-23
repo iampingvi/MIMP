@@ -46,22 +46,22 @@ struct MIMPApp: App {
                         window.titlebarAppearsTransparent = true
                         window.isMovableByWindowBackground = true
                         window.backgroundColor = .clear
-                        window.hasShadow = false
+                        window.hasShadow = true
                         
                         // Configure visual effect view
                         if let visualEffect = window.contentView?.superview as? NSVisualEffectView {
                             visualEffect.wantsLayer = true
                             
-                            // Создаем background view для тени без анимации
+                            // Создаем background view для объемной тени
                             let backgroundView = NSView(frame: visualEffect.bounds)
                             backgroundView.wantsLayer = true
                             backgroundView.layer?.backgroundColor = NSColor.clear.cgColor
                             backgroundView.layer?.cornerRadius = Settings.shared.isWindowExpanded ? 0 : 10
                             backgroundView.layer?.shadowColor = NSColor.black.cgColor
-                            backgroundView.layer?.shadowOpacity = 0.2
-                            backgroundView.layer?.shadowOffset = CGSize(width: 0, height: -2)
-                            backgroundView.layer?.shadowRadius = 12
-                            backgroundView.layer?.masksToBounds = false
+                            backgroundView.layer?.shadowOpacity = 0.1
+                            backgroundView.layer?.shadowOffset = CGSize(width: 0, height: -4)
+                            backgroundView.layer?.shadowRadius = 70
+                            backgroundView.layer?.masksToBounds = true
                             
                             // Отключаем анимации для изменений layer
                             CATransaction.begin()

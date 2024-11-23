@@ -181,11 +181,18 @@ struct ContentView: View {
             HotKeys.shared.setBindings(showingAbout: $showingAbout, updateManager: updateManager)
             keyMonitor = HotKeys.shared.setupKeyboardMonitoring(for: player)
             
-            MediaKeyHandler.shared.setCallback {
-                Task { @MainActor in
-                    player.togglePlayPause()
+            MediaKeyHandler.shared.setCallbacks(
+                playPause: {
+                    Task { @MainActor in
+                        player.togglePlayPause()
+                    }
+                },
+                stop: {
+                    Task { @MainActor in
+                        player.stop()
+                    }
                 }
-            }
+            )
         }
         .onChange(of: scenePhase) { newPhase in
             if newPhase == .active {
@@ -525,7 +532,7 @@ extension View {
     }
 }
 
-// Добавляем расширение для условного применения мо��ификаторов
+// Добавляем расширение для условного применения моификаторов
 extension View {
     @ViewBuilder
     func `if`<Transform: View>(_ condition: Bool, transform: (Self) -> Transform) -> some View {

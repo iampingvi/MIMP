@@ -49,7 +49,7 @@ class HotKeys {
                 }
             }
             
-            // 2. Check for I and U keys without modifiers
+            // 2. Check for I, U, and S keys without modifiers
             if event.modifierFlags.intersection(.deviceIndependentFlagsMask) == [] {
                 switch event.keyCode {
                 case 34: // i key (keyCode 34 is 'i' on all layouts)
@@ -106,6 +106,16 @@ class HotKeys {
                             isCompactMode.wrappedValue = false
                             Settings.shared.isCompactMode = false
                         }
+                    }
+                    return nil
+                    
+                case 1: // S key (keyCode 1 is 's' on all layouts)
+                    if player.isStopped {
+                        // Если трек остановлен, запускаем его с начала
+                        player.play()
+                    } else {
+                        // Если трек играет или на паузе, останавливаем его
+                        player.stop()
                     }
                     return nil
                     

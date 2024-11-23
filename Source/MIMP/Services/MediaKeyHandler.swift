@@ -4,7 +4,8 @@ import Carbon
 
 class MediaKeyHandler {
     static let shared = MediaKeyHandler()
-    private var callback: (() -> Void)?
+    private var playPauseCallback: (() -> Void)?
+    private var stopCallback: (() -> Void)?
     private var eventHandler: EventHandlerRef?
 
     private init() {
@@ -36,7 +37,7 @@ class MediaKeyHandler {
             if error == noErr {
                 if hotKeyID.id == 1 { // Play/Pause key
                     DispatchQueue.main.async {
-                        MediaKeyHandler.shared.callback?()
+                        MediaKeyHandler.shared.playPauseCallback?()
                     }
                     return noErr
                 }
@@ -80,7 +81,8 @@ class MediaKeyHandler {
         }
     }
 
-    func setCallback(_ callback: @escaping () -> Void) {
-        self.callback = callback
+    func setCallbacks(playPause: @escaping () -> Void, stop: @escaping () -> Void) {
+        self.playPauseCallback = playPause
+        self.stopCallback = stop
     }
 }
