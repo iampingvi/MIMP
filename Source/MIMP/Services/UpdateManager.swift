@@ -188,10 +188,8 @@ class UpdateManager: NSObject, ObservableObject {
         
         // Находим .app бандл в распакованных файлах
         print("Looking for app bundle...")
-        let appBundle = try fileManager.contentsOfDirectory(at: tempDir, includingPropertiesForKeys: nil)
-            .first { $0.pathExtension == "app" }
-        
-        guard let appBundle = appBundle else {
+        guard let appBundle = try fileManager.contentsOfDirectory(at: tempDir, includingPropertiesForKeys: nil)
+            .first(where: { $0.pathExtension == "app" }) else {
             print("App bundle not found in: \(try fileManager.contentsOfDirectory(at: tempDir, includingPropertiesForKeys: nil))")
             throw NSError(domain: "UpdateError", code: 1, userInfo: [NSLocalizedDescriptionKey: "App bundle not found in update package"])
         }
@@ -209,7 +207,7 @@ class UpdateManager: NSObject, ObservableObject {
                 try fileManager.removeItem(at: backupURL)
             }
             
-            // Преиновывам текущую версию  .old
+            // Переименовываем текущую версию в .old
             try fileManager.moveItem(at: oldAppURL, to: backupURL)
             
             // Копируем новую версию на место старой
@@ -221,28 +219,22 @@ class UpdateManager: NSObject, ObservableObject {
             try? fileManager.removeItem(at: downloadUrl)
             
             print("Creating restart script...")
-            // Создаем временный скрипт для перезапуска
-            let scriptURL = fileManager.temporaryDirectory.appendingPathComponent("restart_mimp.scpt")
+            // Создаем временный скрипт для перезапуска с правильными правами
+            let scriptURL = fileManager.temporaryDirectory.appendingPathComponent("restart_mimp.sh")
             let scriptContent = """
-            do shell script "sleep 1"
-            tell application "System Events"
-                try
-                    do shell script "rm -rf '\(backupURL.path)'"
-                end try
-                try
-                    tell application "Finder"
-                        activate application "\(oldAppURL.path)"
-                    end tell
-                end try
-            end tell
+            #!/bin/bash
+            sleep 1
+            rm -rf '\(backupURL.path)'
+            open '\(oldAppURL.path)'
             """
             
             try scriptContent.write(to: scriptURL, atomically: true, encoding: .utf8)
+            try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptURL.path)
             
             print("Executing restart script...")
             // Запускаем скрипт
             let task = Process()
-            task.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+            task.executableURL = URL(fileURLWithPath: "/bin/bash")
             task.arguments = [scriptURL.path]
             try task.run()
             
