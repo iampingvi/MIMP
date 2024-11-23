@@ -37,6 +37,7 @@ That's why I created MIMP - a minimalistic music player specifically designed fo
 - **C key**: Enter compact mode
 - **I key**: Open About
 - **U key**: Open Updater (if available)
+- **S key**: Stop/Play track
 
 ## Technical Details
 
